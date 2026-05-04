@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: autoclaw
+    runtime: docker
+    repo: https://github.com/autoclaw/autoclaw
+    branch: main
+    plan: standard
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: RUST_LOG
+        value: info
+      - key: ANTHROPIC_API_KEY
+        sync: false
+    healthCheckPath: /api/status
+    disk:
+      name: autoclaw-data
+      mountPath: /app/.autoclaw
+      sizeGB: 10

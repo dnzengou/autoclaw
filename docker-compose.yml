@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  autoclaw:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - RUST_LOG=info
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AUTOCALW_BUDGET=${AUTOCALW_BUDGET:-300}
+      - AUTOCALW_CONTEXT=${AUTOCALW_CONTEXT:-context.md}
+    volumes:
+      - ./context.md:/app/context.md
+      - ./train.py:/app/train.py
+      - ./eval_rubric.json:/app/eval_rubric.json
+      - autoclaw_data:/app/.autoclaw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  autoclaw_data:
+  prometheus_data:
+  grafana_data:

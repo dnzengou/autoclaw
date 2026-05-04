@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autoclaw Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+/* Header */
+.header { background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 20px; font-weight: 600; color: #f97316; }
+.header h1 span { color: #64748b; font-weight: 400; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.controls button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-start { background: #22c55e; color: #fff; }
+.btn-start:hover { background: #16a34a; }
+.btn-stop { background: #ef4444; color: #fff; }
+.btn-stop:hover { background: #dc2626; }
+.btn-reset { background: #64748b; color: #fff; }
+.btn-reset:hover { background: #475569; }
+.controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Metric Cards */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 24px; }
+.metric-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
+.metric-card .label { font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
+.metric-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+.metric-card .value.green { color: #22c55e; }
+.metric-card .value.orange { color: #f97316; }
+.metric-card .value.blue { color: #3b82f6; }
+.metric-card .value.purple { color: #a855f7; }
+
+/* Main Layout */
+.main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 24px 24px; }
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+
+.panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+.panel-header { padding: 12px 16px; border-bottom: 1px solid #334155; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
+.panel-body { padding: 16px; }
+
+/* Chart */
+.chart-container { position: relative; height: 250px; }
+
+/* Experiment Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-weight: 500; cursor: pointer; user-select: none; }
+th:hover { color: #e2e8f0; }
+td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
+tr:hover td { background: #1a2332; }
+
+.status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.status-completed { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; }
+.status-running { background: #f9731620; color: #f97316; border: 1px solid #f9731640; animation: pulse 1.5s infinite; }
+.status-failed { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+.status-reverted { background: #64748b20; color: #64748b; border: 1px solid #64748b40; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* Context Editor */
+.context-editor { width: 100%; min-height: 300px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; padding: 12px; resize: vertical; line-height: 1.5; }
+.context-editor:focus { outline: none; border-color: #f97316; }
+.editor-actions { display: flex; gap: 8px; margin-top: 8px; }
+.editor-actions button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; }
+.btn-save { background: #f97316; color: #fff; }
+.btn-save:hover { background: #ea580c; }
+
+/* Live Feed */
+.feed { max-height: 300px; overflow-y: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; }
+.feed-entry { padding: 6px 0; border-bottom: 1px solid #1e293b; display: flex; gap: 8px; }
+.feed-time { color: #64748b; white-space: nowrap; }
+.feed-id { color: #f97316; font-weight: 500; }
+.feed-score { color: #22c55e; }
+.feed-score.bad { color: #ef4444; }
+.feed-hypo { color: #94a3b8; }
+
+/* Status indicator */
+.status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.idle { background: #64748b; }
+.status-dot.running { background: #22c55e; animation: pulse 1.5s infinite; }
+.status-dot.stopped { background: #ef4444; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 40px; color: #64748b; }
+.empty-state p { margin-top: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🦞 Autoclaw <span>Experiment Dashboard</span></h1>
+    <div class="status-indicator" id="statusIndicator">
+      <span class="status-dot idle" id="statusDot"></span>
+      <span id="statusText">Idle</span>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn-start" id="btnStart" onclick="startLoop()">▶ Start</button>
+    <button class="btn-stop" id="btnStop" onclick="stopLoop()" disabled>■ Stop</button>
+    <button class="btn-reset" id="btnReset" onclick="resetLoop()">↺ Reset</button>
+  </div>
+</div>
+
+<div class="metrics" id="metrics">
+  <div class="metric-card">
+    <div class="label">Experiments</div>
+    <div class="value blue" id="totalExps">0</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Best Score</div>
+    <div class="value green" id="bestScore">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Budget Left</div>
+    <div class="value orange" id="budgetLeft">—</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Uptime</div>
+    <div class="value purple" id="uptime">0s</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-header">Score Progression</div>
+    <div class="panel-body">
+      <div class="chart-container">
+        <canvas id="scoreChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">Live Feed</div>
+    <div class="panel-body feed" id="feed">
+      <div class="empty-state">
+        <div style="font-size: 32px;">⏳</div>
+        <p>Waiting for experiments...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <div class="panel-header">Experiment History</div>
+    <div class="panel-body">
+      <div class="table-wrap">
+        <table id="expTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('id')">ID ↕</th>
+              <th onclick="sortTable('hypothesis')">Hypothesis ↕</th>
+              <th onclick="sortTable('score')">Score ↕</th>
+              <th onclick="sortTable('status')">Status ↕</th>
+              <th onclick="sortTable('timestamp')">Time ↕</th>
+              <th>Git Hash</th>
+            </tr>
+          </thead>
+          <tbody id="expBody">
+            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column: 1 / -1;">
+    <div class="panel-header">Context Editor</div>
+    <div class="panel-body">
+      <textarea class="context-editor" id="contextEditor" placeholder="Loading context..."></textarea>
+      <div class="editor-actions">
+        <button class="btn-save" onclick="saveContext()">💾 Save Context</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let experiments = [];
+let sortField = null;
+let sortAsc = true;
+let scoreChart = null;
+
+// ─── SSE Connection ─────────────────────────────────────────────────────────
+function connectSSE() {
+  const evtSource = new EventSource('/events');
+  evtSource.onmessage = function(e) {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'done') {
+        updateStatus({ running: false });
+        return;
+      }
+      if (data.id) {
+        // Update or add experiment
+        const idx = experiments.findIndex(x => x.id === data.id);
+        if (idx >= 0) experiments[idx] = data;
+        else experiments.push(data);
+        renderAll();
+      }
+    } catch(err) {
+      console.error('SSE parse error:', err);
+    }
+  };
+  evtSource.onerror = function() {
+    console.log('SSE disconnected, reconnecting...');
+  };
+}
+
+// ─── API Calls ──────────────────────────────────────────────────────────────
+
+async function startLoop() {
+  document.getElementById('btnStart').disabled = true;
+  await fetch('/api/start', { method: 'POST' });
+  updateStatus({ running: true });
+}
+
+async function stopLoop() {
+  await fetch('/api/stop', { method: 'POST' });
+  updateStatus({ running: false });
+}
+
+async function resetLoop() {
+  if (!confirm('Reset all experiment data?')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  experiments = [];
+  renderAll();
+  updateStatus({ running: false, total_experiments: 0, best_score: 0, budget_remaining: 0 });
+}
+
+async function saveContext() {
+  const content = document.getElementById('contextEditor').value;
+  await fetch('/api/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: content
+  });
+}
+
+async function loadContext() {
+  try {
+    const resp = await fetch('/api/context');
+    const text = await resp.text();
+    document.getElementById('contextEditor').value = text;
+  } catch(e) {
+    document.getElementById('contextEditor').placeholder = 'Failed to load context';
+  }
+}
+
+async function loadStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    updateStatus(data);
+  } catch(e) {}
+}
+
+async function loadResults() {
+  try {
+    const resp = await fetch('/api/results');
+    experiments = await resp.json();
+    renderAll();
+  } catch(e) {}
+}
+
+// ─── Render ─────────────────────────────────────────────────────────────────
+
+function renderAll() {
+  renderMetrics();
+  renderChart();
+  renderTable();
+  renderFeed();
+}
+
+function renderMetrics() {
+  document.getElementById('totalExps').textContent = experiments.length;
+  const best = experiments.length > 0 ? Math.max(...experiments.map(e => e.score || 0)) : 0;
+  document.getElementById('bestScore').textContent = experiments.length > 0 ? best.toFixed(4) : '—';
+
+  const last = experiments[experiments.length - 1];
+  const budget = last && last.budget_remaining !== undefined ? last.budget_remaining : 0;
+  document.getElementById('budgetLeft').textContent = budget > 0 ? budget.toFixed(0) + 's' : '—';
+}
+
+function renderChart() {
+  if (!scoreChart) {
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    scoreChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{
+        label: 'Score',
+        data: [],
+        borderColor: '#f97316',
+        backgroundColor: '#f9731620',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#f97316'
+      }]},
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  const labels = experiments.map(e => e.id);
+  const data = experiments.map(e => e.score || 0);
+  scoreChart.data.labels = labels;
+  scoreChart.data.datasets[0].data = data;
+  scoreChart.update('none');
+}
+
+function renderTable() {
+  const tbody = document.getElementById('expBody');
+  if (experiments.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>';
+    return;
+  }
+
+  let sorted = [...experiments];
+  if (sortField) {
+    sorted.sort((a, b) => {
+      let va = a[sortField] || '';
+      let vb = b[sortField] || '';
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return sortAsc ? -1 : 1;
+      if (va > vb) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  tbody.innerHTML = sorted.map(e => {
+    const statusClass = 'status-' + (e.status || 'unknown');
+    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
+    return `<tr>
+      <td><strong>${e.id}</strong></td>
+      <td>${(e.hypothesis || '?').substring(0, 60)}</td>
+      <td style="color:${(e.score||0) > 0.5 ? '#22c55e' : '#ef4444'}">${(e.score || 0).toFixed(4)}</td>
+      <td><span class="status-badge ${statusClass}">${e.status || '?'}</span></td>
+      <td>${time}</td>
+      <td style="font-family:monospace;font-size:11px;color:#64748b">${(e.git_hash || '').substring(0, 7)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  if (experiments.length === 0) {
+    feed.innerHTML = '<div class="empty-state"><div style="font-size:32px;">⏳</div><p>Waiting for experiments...</p></div>';
+    return;
+  }
+
+  const recent = experiments.slice(-20).reverse();
+  feed.innerHTML = recent.map(e => {
+    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
+    const scoreClass = (e.score || 0) > 0.5 ? 'feed-score' : 'feed-score bad';
+    return `<div class="feed-entry">
+      <span class="feed-time">${time}</span>
+      <span class="feed-id">${e.id}</span>
+      <span class="${scoreClass}">${(e.score || 0).toFixed(4)}</span>
+      <span class="feed-hypo">${(e.hypothesis || '').substring(0, 50)}</span>
+    </div>`;
+  }).join('');
+
+  feed.scrollTop = 0;
+}
+
+function updateStatus(data) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+
+  if (data.running) {
+    dot.className = 'status-dot running';
+    text.textContent = 'Running';
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+  } else {
+    dot.className = 'status-dot idle';
+    text.textContent = 'Idle';
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+  }
+
+  if (data.total_experiments !== undefined) {
+    document.getElementById('totalExps').textContent = data.total_experiments;
+  }
+  if (data.best_score !== undefined) {
+    document.getElementById('bestScore').textContent = data.best_score.toFixed(4);
+  }
+  if (data.budget_remaining !== undefined) {
+    document.getElementById('budgetLeft').textContent = data.budget_remaining.toFixed(0) + 's';
+  }
+  if (data.uptime !== undefined) {
+    document.getElementById('uptime').textContent = data.uptime.toFixed(0) + 's';
+  }
+}
+
+function sortTable(field) {
+  if (sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = true; }
+  renderTable();
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+loadContext();
+loadStatus();
+loadResults();
+connectSSE();
+
+// Poll status every 5s
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
