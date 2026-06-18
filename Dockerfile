@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     libgit2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests
-COPY Cargo.toml Cargo.lock ./
+# Copy manifests (Cargo.lock not committed — cargo will generate inside the build)
+COPY Cargo.toml ./
 
 # Copy source
 COPY src ./src
