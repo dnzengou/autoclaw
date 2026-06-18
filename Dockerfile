@@ -1,53 +1,27 @@
-# Build stage
-FROM rust:1.75-slim-bookworm AS builder
+# Multi-stage: try Go agent (single binary, no system deps), fall back to Python.
+# Rust build path lives in Dockerfile.rust for later when src/ compiles cleanly.
 
+# Build stage — Go is fastest, smallest, and src is already in agent.go
+FROM golang:1.22-alpine AS go-builder
+WORKDIR /build
+COPY agent.go ./
+RUN go mod init autoclaw 2>/dev/null || true \
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/autoclaw agent.go
+
+# Runtime — small, just needs git for the loop's commit/revert
+FROM alpine:3.20
+RUN apk add --no-cache git ca-certificates curl python3
 WORKDIR /app
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    libgit2-dev \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=go-builder /out/autoclaw /usr/local/bin/autoclaw
+COPY agent.py eval.py train.py dashboard.html context.md rubric.json ./
 
-# Copy manifests (Cargo.lock not committed — cargo will generate inside the build)
-COPY Cargo.toml ./
-
-# Copy source
-COPY src ./src
-
-# Build release binary
-RUN cargo build --release
-
-# Runtime stage
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    git \
-    libgit2-1.5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy binary from builder
-COPY --from=builder /app/target/release/autoclaw /usr/local/bin/autoclaw
-
-# Create directories
-RUN mkdir -p .autoclaw/metrics .autoclaw/logs .autoclaw/checkpoints
-
-# Environment
 ENV PORT=8080
-ENV RUST_LOG=info
-ENV AUTOCALW_WORKSPACE=/app
-
-# Expose port
 EXPOSE 8080
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/api/status || exit 1
 
-# Default command
-CMD ["autoclaw", "server", "--port", "8080"]
+# Default: run the Go binary (server + dashboard).
+# Override CMD to use Python: docker run ... python3 agent.py
+CMD ["autoclaw", "--port", "8080"]
