@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Autoclaw Team"]
 description = "No-code self-improving automation loop for Claude Cowork"
 license = "MIT"
-repository = "https://github.com/autoclaw/autoclaw"
+repository = "https://github.com/dnzengou/autoclaw"
 
 [dependencies]
 tokio = { version = "1.35", features = ["full", "rt-multi-thread"] }

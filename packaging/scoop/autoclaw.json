@@ -1,0 +1,21 @@
+{
+  "version": "0.1.0",
+  "description": "Self-improving AI experiment loop for Claude Cowork",
+  "homepage": "https://autoclaw.dev",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/dnzengou/autoclaw/releases/download/v0.1.0/autoclaw-x86_64-pc-windows-msvc.exe",
+      "hash": "REPLACE_WITH_RELEASE_SHA256_WIN_AMD64"
+    }
+  },
+  "bin": [["autoclaw-x86_64-pc-windows-msvc.exe", "autoclaw"]],
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/dnzengou/autoclaw/releases/download/v$version/autoclaw-x86_64-pc-windows-msvc.exe"
+      }
+    }
+  }
+}

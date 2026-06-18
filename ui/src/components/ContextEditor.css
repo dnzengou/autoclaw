@@ -1,0 +1,104 @@
+.context-editor {
+  background: #15151a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.context-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: #1a1a20;
+  border-bottom: 1px solid #333;
+}
+
+.context-editor-header h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.context-editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.context-editor-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #333;
+  color: #e0e0e0;
+}
+
+.context-editor-actions button:hover:not(:disabled) {
+  background: #444;
+}
+
+.context-editor-actions .btn-primary {
+  background: #00ff88;
+  color: #0a0a0f;
+}
+
+.context-editor-actions .btn-primary:hover:not(:disabled) {
+  background: #00cc6a;
+}
+
+.context-editor textarea {
+  width: 100%;
+  min-height: 500px;
+  padding: 24px;
+  background: #15151a;
+  border: none;
+  color: #e0e0e0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+
+.context-editor textarea::placeholder {
+  color: #555;
+}
+
+.context-editor-help {
+  padding: 20px 24px;
+  background: #1a1a20;
+  border-top: 1px solid #333;
+}
+
+.context-editor-help h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.context-editor-help ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.context-editor-help li {
+  font-size: 0.8125rem;
+  color: #aaa;
+}
+
+.context-editor-help li strong {
+  color: #00ff88;
+  font-weight: 600;
+}

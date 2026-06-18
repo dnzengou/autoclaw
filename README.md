@@ -66,7 +66,7 @@ Single primary metric (lower validation loss = better):
 
 ### From Source (Rust)
 ```bash
-git clone https://github.com/autoclaw/autoclaw
+git clone https://github.com/dnzengou/autoclaw
 cd autoclaw
 cargo build --release
 sudo cp target/release/autoclaw /usr/local/bin
@@ -74,7 +74,7 @@ sudo cp target/release/autoclaw /usr/local/bin
 
 ### Docker
 ```bash
-docker run -p 8080:8080 autoclaw/autoclaw:latest
+docker run -p 8080:8080 dnzengou/autoclaw:latest
 ```
 
 ### Homebrew
@@ -238,7 +238,7 @@ autoclaw deploy railway
 ## Contributing
 
 ```bash
-git clone https://github.com/autoclaw/autoclaw
+git clone https://github.com/dnzengou/autoclaw
 cd autoclaw
 cargo test
 cargo build

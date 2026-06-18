@@ -2,7 +2,7 @@ services:
   - type: web
     name: autoclaw
     runtime: docker
-    repo: https://github.com/autoclaw/autoclaw
+    repo: https://github.com/dnzengou/autoclaw
     branch: main
     plan: standard
     envVars:

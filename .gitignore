@@ -1,0 +1,55 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+ui/dist/
+sdk/js/dist/
+mobile/gen/
+mobile/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+sdk/python/dist/
+sdk/python/build/
+
+# Go
+sdk/go/vendor/
+
+# Secrets / env
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Logs / runtime state
+*.log
+.autoclaw/
+results.json
+experiments/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# Build artifacts
+dist/
+build/
+*.bak
+*.backup

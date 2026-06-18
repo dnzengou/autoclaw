@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autoclaw — Self-improving AI experiment loop</title>
+<meta name="description" content="Karpathy-pattern automation. Human edits context.md, AI edits code, every experiment is a git commit. Rust + Go + Python + APK. 14 install channels.">
+<link rel="canonical" href="https://autoclaw.dev/">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Autoclaw — Self-improving AI experiment loop">
+<meta property="og:description" content="Human: context.md. AI: code. Git: every iteration. 14 install channels (pip · npm · brew · scoop · apt · APK · Docker · Fly · Railway · Render · binaries × 5).">
+<meta property="og:url" content="https://autoclaw.dev/">
+<meta property="og:image" content="https://autoclaw.dev/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Autoclaw — Self-improving AI experiment loop">
+<meta name="twitter:description" content="Karpathy pattern · Claude/GPT/DeepSeek · 14 install channels.">
+
+<!-- Plausible (matches Clow.studio analytics setup) -->
+<script defer data-domain="autoclaw.dev" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
+<script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
+
+<!-- JSON-LD: links autoclaw → Desired Solutions → Clow ecosystem -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://autoclaw.dev/#app",
+      "name": "Autoclaw",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows, Android, iOS",
+      "url": "https://autoclaw.dev/",
+      "description": "No-code self-improving automation loop for Claude Cowork. Karpathy-pattern. 14 install channels.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+      "softwareVersion": "0.1.0",
+      "license": "https://opensource.org/licenses/MIT",
+      "publisher": { "@id": "https://autoclaw.dev/#org" },
+      "sameAs": [
+        "https://github.com/dnzengou/autoclaw",
+        "https://ghcr.io/dnzengou/autoclaw",
+        "https://hub.docker.com/r/dnzengou/autoclaw",
+        "https://pypi.org/project/autoclaw/",
+        "https://www.npmjs.com/package/@autoclaw/sdk"
+      ]
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://autoclaw.dev/#org",
+      "name": "Desired Solutions",
+      "url": "https://desiredsolutions.space",
+      "sameAs": [
+        "https://clow-tau.vercel.app",
+        "https://github.com/dnzengou",
+        "https://www.linkedin.com/in/dnzengou"
+      ],
+      "subOrganization": { "@id": "https://clow-tau.vercel.app/#org" }
+    },
+    {
+      "@type": "WebSite",
+      "url": "https://autoclaw.dev/",
+      "name": "Autoclaw",
+      "publisher": { "@id": "https://autoclaw.dev/#org" }
+    }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --bg: #0b0d10;
+  --fg: #eef2f7;
+  --muted: #8a94a3;
+  --accent: #ff7a3d;
+  --accent-2: #ffd166;
+  --card: #14181d;
+  --border: #232a33;
+  --code: #1a1f26;
+  --ok: #2dd4a8;
+  --link: #74b9ff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+pre {
+  background: var(--code); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; overflow-x: auto;
+}
+code:not(pre code) {
+  background: var(--code); padding: 2px 6px; border-radius: 4px;
+  color: var(--accent-2);
+}
+
+/* Layout */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+header {
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; backdrop-filter: blur(8px);
+  background: rgba(11, 13, 16, 0.85); z-index: 10;
+}
+header .wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+}
+.logo {
+  font-weight: 700; font-size: 18px; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo .mark { color: var(--accent); }
+nav a { color: var(--fg); margin-left: 18px; font-size: 14px; }
+nav a:hover { color: var(--accent-2); text-decoration: none; }
+
+/* Hero */
+.hero { padding: 80px 0 60px; text-align: center; }
+.hero h1 {
+  font-size: clamp(40px, 6vw, 64px); font-weight: 800;
+  letter-spacing: -0.03em; line-height: 1.05;
+}
+.hero h1 .mark { color: var(--accent); }
+.hero .tag {
+  color: var(--muted); font-size: 18px; max-width: 640px;
+  margin: 18px auto 28px;
+}
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  padding: 12px 22px; border-radius: 8px; font-weight: 600;
+  border: 1px solid var(--border); color: var(--fg);
+  background: var(--card); font-size: 15px;
+  cursor: pointer; transition: transform .1s;
+}
+.btn:hover { transform: translateY(-1px); text-decoration: none; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #0b0d10; }
+.btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* Sections */
+section { padding: 60px 0; border-top: 1px solid var(--border); }
+section h2 {
+  font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+section h2 .num { color: var(--accent); margin-right: 10px; font-weight: 400; }
+section .lede { color: var(--muted); margin-bottom: 32px; max-width: 720px; }
+
+/* Loop diagram */
+.loop {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 12px; margin: 28px 0; text-align: center;
+}
+.loop .node {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 18px 8px; font-size: 14px;
+}
+.loop .node .ico { font-size: 24px; display: block; margin-bottom: 6px; }
+.loop .node strong { display: block; }
+@media (max-width: 720px) { .loop { grid-template-columns: repeat(2, 1fr); } }
+
+/* Install grid */
+.channels {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.channel {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px;
+}
+.channel h3 {
+  font-size: 16px; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.channel .audience { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.channel pre { margin: 0; font-size: 13px; padding: 10px 12px; }
+.channel .badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: var(--ok); color: #0b0d10; font-weight: 600;
+}
+
+/* Pricing */
+.tiers { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.tier {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px;
+}
+.tier.featured { border-color: var(--accent); }
+.tier h3 { font-size: 20px; margin-bottom: 4px; }
+.tier .price { font-size: 28px; font-weight: 800; margin: 12px 0; }
+.tier .price small { font-size: 14px; color: var(--muted); font-weight: 400; }
+.tier ul { list-style: none; margin: 16px 0; }
+.tier li { padding: 6px 0; color: var(--muted); font-size: 14px; }
+.tier li::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+
+/* Waitlist */
+.waitlist {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 28px; text-align: center;
+}
+.waitlist input {
+  width: 100%; max-width: 360px; padding: 12px 14px;
+  background: var(--code); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--fg); font-size: 15px;
+  margin: 12px 0;
+}
+.waitlist input:focus { outline: none; border-color: var(--accent); }
+.waitlist .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* Footer */
+footer { padding: 40px 0; color: var(--muted); font-size: 14px; text-align: center; }
+footer .links { margin-bottom: 12px; }
+footer .links a { margin: 0 10px; }
+.kicker {
+  display: inline-block; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="/" class="logo"><span class="mark">⟲</span> autoclaw</a>
+    <nav>
+      <a href="#how">How</a>
+      <a href="#install">Install</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/dnzengou/autoclaw" target="_blank" rel="noopener" class="plausible-event-name=github_click">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="kicker">By Desired Solutions · paired with <a href="https://clow-tau.vercel.app" target="_blank" rel="noopener">Clow.studio</a></span>
+    <h1>Self-improving<br><span class="mark">AI loop</span></h1>
+    <p class="tag">
+      Karpathy pattern, productised. <b>You</b> edit <code>context.md</code>.
+      <b>AI</b> proposes hypotheses, runs experiments, commits wins, reverts regressions.
+      Forever.
+    </p>
+    <div class="cta">
+      <a href="#install" class="btn btn-primary plausible-event-name=cta_install">Install in 30s</a>
+      <a href="https://github.com/dnzengou/autoclaw" class="btn plausible-event-name=cta_github" target="_blank" rel="noopener">Source on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2><span class="num">01</span>How it works</h2>
+    <p class="lede">A loop, not a tool. Human controls direction; AI iterates inside time-budgeted experiments; git keeps the receipts.</p>
+    <div class="loop">
+      <div class="node"><span class="ico">📝</span><strong>Context</strong>You write goals</div>
+      <div class="node"><span class="ico">🧠</span><strong>Hypothesis</strong>AI proposes</div>
+      <div class="node"><span class="ico">⚙️</span><strong>Run</strong>300s budget</div>
+      <div class="node"><span class="ico">📊</span><strong>Score</strong>Against rubric</div>
+      <div class="node"><span class="ico">🔁</span><strong>Commit/Revert</strong>Git is truth</div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2><span class="num">02</span>14 install channels</h2>
+    <p class="lede">Use the channel that matches your stack. Every release ships everywhere at once.</p>
+    <div class="channels">
+
+      <div class="channel">
+        <h3>🐍 Python <span class="badge">SDK</span></h3>
+        <div class="audience">Data scientists, agent builders</div>
+        <pre>pip install autoclaw</pre>
+      </div>
+
+      <div class="channel">
+        <h3>📦 JS / TS <span class="badge">SDK</span></h3>
+        <div class="audience">Web devs, edge runtimes</div>
+        <pre>npm i @autoclaw/sdk</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🐹 Go <span class="badge">SDK</span></h3>
+        <div class="audience">Backend, infra</div>
+        <pre>go get github.com/dnzengou/autoclaw/sdk/go</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🍺 Homebrew</h3>
+        <div class="audience">macOS / Linux</div>
+        <pre>brew install dnzengou/tap/autoclaw</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🪣 Scoop</h3>
+        <div class="audience">Windows</div>
+        <pre>scoop install autoclaw</pre>
+      </div>
+
+      <div class="channel">
+        <h3>📜 install.sh</h3>
+        <div class="audience">macOS / Linux / WSL</div>
+        <pre>curl -fsSL autoclaw.dev/install.sh | sh</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🪟 install.ps1</h3>
+        <div class="audience">Windows PowerShell</div>
+        <pre>iwr -useb autoclaw.dev/install.ps1 | iex</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🐳 Docker <span class="badge">multi-arch</span></h3>
+        <div class="audience">Containers, K8s</div>
+        <pre>docker run -p 8080:8080 \
+  ghcr.io/dnzengou/autoclaw:latest</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🤖 Android APK</h3>
+        <div class="audience">Mobile dashboard</div>
+        <pre>Download from <a href="https://github.com/dnzengou/autoclaw/releases" target="_blank" rel="noopener">Releases</a></pre>
+      </div>
+
+      <div class="channel">
+        <h3>🍎 iOS</h3>
+        <div class="audience">Mobile dashboard</div>
+        <pre>cargo tauri ios build</pre>
+      </div>
+
+      <div class="channel">
+        <h3>📦 .deb</h3>
+        <div class="audience">Debian / Ubuntu</div>
+        <pre>sudo dpkg -i autoclaw_0.1.0.deb</pre>
+      </div>
+
+      <div class="channel">
+        <h3>✈️ Fly.io</h3>
+        <div class="audience">Edge deploy</div>
+        <pre>fly launch</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🚂 Railway</h3>
+        <div class="audience">One-click PaaS</div>
+        <pre>railway up</pre>
+      </div>
+
+      <div class="channel">
+        <h3>🦀 From source</h3>
+        <div class="audience">Custom builds</div>
+        <pre>cargo build --release</pre>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <h2><span class="num">03</span>Free forever. Pro for teams.</h2>
+    <p class="lede">Self-host the loop on your own metal at zero cost. Pro unlocks managed runs, shared dashboards, and Claude/GPT/DeepSeek key pooling.</p>
+    <div class="tiers">
+
+      <div class="tier">
+        <h3>OSS</h3>
+        <div class="price">€0<small> /forever</small></div>
+        <ul>
+          <li>All 14 install channels</li>
+          <li>Self-hosted dashboard</li>
+          <li>Bring-your-own API key</li>
+          <li>MIT license, fork freely</li>
+        </ul>
+        <a href="https://github.com/dnzengou/autoclaw" class="btn plausible-event-name=tier_oss" target="_blank" rel="noopener">Get on GitHub</a>
+      </div>
+
+      <div class="tier featured">
+        <h3>Pro</h3>
+        <div class="price">€9.99<small> /mo</small></div>
+        <ul>
+          <li>Managed cloud runtime</li>
+          <li>Pooled Claude credits</li>
+          <li>Team dashboards + audit log</li>
+          <li>Discord support</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-primary plausible-event-name=tier_pro">Join waitlist</a>
+      </div>
+
+      <div class="tier">
+        <h3>Enterprise</h3>
+        <div class="price">Talk to us</div>
+        <ul>
+          <li>SSO, SAML, audit</li>
+          <li>On-prem or dedicated</li>
+          <li>SLA + custom SLAs</li>
+          <li>White-glove onboarding</li>
+        </ul>
+        <a href="mailto:hello@desiredsolutions.space?subject=Autoclaw%20Enterprise" class="btn plausible-event-name=tier_ent">Contact sales</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="waitlist">
+  <div class="wrap">
+    <div class="waitlist">
+      <h2 style="border:0;padding:0;">Get early access to Pro</h2>
+      <p class="lede" style="margin: 8px auto 0;">No spam. One launch email when Pro opens.</p>
+      <form action="https://api.web3forms.com/submit" method="POST" onsubmit="plausible('waitlist_submit')">
+        <!-- Replace with your real Web3Forms access key (same setup as Clow.studio) -->
+        <input type="hidden" name="access_key" value="aebaf333-0259-492a-aacf-f60d454eb417">
+        <input type="hidden" name="subject" value="Autoclaw Pro waitlist signup">
+        <input type="hidden" name="from_name" value="Autoclaw">
+        <div class="row">
+          <input type="email" name="email" placeholder="you@example.com" required>
+          <button type="submit" class="btn btn-primary">Join waitlist →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a href="https://clow-tau.vercel.app" target="_blank" rel="noopener">Clow.studio</a>
+      ·
+      <a href="https://desiredsolutions.space" target="_blank" rel="noopener">Desired Solutions</a>
+      ·
+      <a href="https://github.com/dnzengou/autoclaw" target="_blank" rel="noopener">GitHub</a>
+      ·
+      <a href="https://www.linkedin.com/in/dnzengou" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
+    <div>© 2026 Desired Solutions · MIT · Built with Karpathy's autoresearch pattern · v0.1.0</div>
+  </div>
+</footer>
+
+</body>
+</html>

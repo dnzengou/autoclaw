@@ -1,0 +1,93 @@
+{
+  "name": "Autoclaw Comprehensive",
+  "version": "2.0.0",
+  "description": "Multi-dimensional evaluation rubric for self-improving automation",
+  "criteria": [
+    {
+      "id": "primary_metric",
+      "name": "Primary Metric",
+      "description": "Main optimization target (e.g., validation loss)",
+      "metric_type": "lower_is_better",
+      "target": 2.0,
+      "weight": 0.35,
+      "required": true
+    },
+    {
+      "id": "secondary_metric",
+      "name": "Secondary Metric",
+      "description": "Secondary optimization target",
+      "metric_type": "higher_is_better",
+      "target": 0.85,
+      "weight": 0.15,
+      "required": false
+    },
+    {
+      "id": "training_speed",
+      "name": "Training Speed",
+      "description": "Tokens processed per second",
+      "metric_type": "higher_is_better",
+      "target": 10000,
+      "weight": 0.1,
+      "required": true
+    },
+    {
+      "id": "memory_efficiency",
+      "name": "Memory Efficiency",
+      "description": "GPU memory utilization (0.7-0.95 optimal)",
+      "metric_type": "range",
+      "range": { "min": 0.7, "max": 0.95 },
+      "target": 0.85,
+      "weight": 0.1,
+      "required": true
+    },
+    {
+      "id": "code_quality",
+      "name": "Code Quality",
+      "description": "Static analysis and best practices score",
+      "metric_type": "higher_is_better",
+      "target": 0.9,
+      "weight": 0.1,
+      "required": true
+    },
+    {
+      "id": "stability",
+      "name": "Stability",
+      "description": "No crashes or errors during run",
+      "metric_type": "exact_match",
+      "target": 1.0,
+      "weight": 0.1,
+      "required": true
+    },
+    {
+      "id": "convergence",
+      "name": "Convergence",
+      "description": "Loss curve smoothness and convergence",
+      "metric_type": "higher_is_better",
+      "target": 0.8,
+      "weight": 0.1,
+      "required": false
+    }
+  ],
+  "thresholds": {
+    "excellent": 0.9,
+    "good": 0.75,
+    "acceptable": 0.6,
+    "poor": 0.4
+  },
+  "scoring": {
+    "method": "weighted_average",
+    "normalize": true,
+    "bonus_for_improvement": 0.05
+  },
+  "adoption": {
+    "activation_rate_target": 0.6,
+    "day1_retention_target": 0.55,
+    "day7_retention_target": 0.35,
+    "day30_retention_target": 0.20
+  },
+  "monetization": {
+    "free_to_paid_target": 0.08,
+    "ltv_cac_ratio_target": 3.0,
+    "upsell_rate_target": 0.20
+  }
+}

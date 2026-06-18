@@ -1,0 +1,12 @@
+Package: autoclaw
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: git, libc6
+Maintainer: Autoclaw Team <team@autoclaw.dev>
+Description: Self-improving AI experiment loop for Claude Cowork
+ Autoclaw is a no-code automation loop that lets Claude (or any LLM)
+ iteratively improve code against a user-defined rubric. Human edits
+ context.md; AI edits train.py; every experiment is a git commit.
+Homepage: https://autoclaw.dev

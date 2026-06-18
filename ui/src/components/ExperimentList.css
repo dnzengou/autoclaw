@@ -1,0 +1,65 @@
+.experiment-list {
+  overflow-x: auto;
+}
+
+.experiment-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.experiment-list th {
+  text-align: left;
+  padding: 14px 16px;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #333;
+}
+
+.experiment-list td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #222;
+  color: #e0e0e0;
+}
+
+.experiment-list tr:hover td {
+  background: #1a1a20;
+}
+
+.experiment-list tr.passed {
+  border-left: 3px solid #00ff88;
+}
+
+.experiment-list tr.failed {
+  border-left: 3px solid #ff4444;
+}
+
+.experiment-list .hypothesis {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge.success {
+  background: #00ff8822;
+  color: #00ff88;
+}
+
+.badge.fail {
+  background: #ff444422;
+  color: #ff4444;
+}
