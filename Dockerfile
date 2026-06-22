@@ -1,53 +1,38 @@
-# Build stage
-FROM rust:1.75-slim-bookworm AS builder
+# Build stage — Go agent (single binary, no system deps, ~20s build).
+# The Rust path lives in Dockerfile.rust for when `cargo build --release` is green.
+FROM golang:1.22-alpine3.20 AS go-builder
+WORKDIR /build
 
-WORKDIR /app
+# Module init BEFORE copying source — stable cache layer for stdlib-only build.
+RUN go env -w GOFLAGS='-mod=mod' && \
+    printf 'module github.com/dnzengou/autoclaw\n\ngo 1.22\n' > go.mod
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    libgit2-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy manifests (Cargo.lock not committed — cargo will generate inside the build)
-COPY Cargo.toml ./
-
-# Copy source
-COPY src ./src
-
-# Build release binary
-RUN cargo build --release
+COPY agent.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw agent.go
 
 # Runtime stage
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    git \
-    libgit2-1.5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+FROM alpine:3.20
+RUN apk add --no-cache git ca-certificates curl python3 tini && \
+    addgroup -S autoclaw && adduser -S autoclaw -G autoclaw
 
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=builder /app/target/release/autoclaw /usr/local/bin/autoclaw
+COPY --from=go-builder /out/autoclaw /usr/local/bin/autoclaw
+COPY agent.py eval.py train.py dashboard.html context.md rubric.json ./
 
-# Create directories
-RUN mkdir -p .autoclaw/metrics .autoclaw/logs .autoclaw/checkpoints
+RUN chown -R autoclaw:autoclaw /app
+USER autoclaw
 
-# Environment
-ENV PORT=8080
-ENV RUST_LOG=info
-ENV AUTOCALW_WORKSPACE=/app
+ENV PORT=8080 \
+    AUTOCLAW_WORKSPACE=/app
 
-# Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/status || exit 1
+# tini = PID 1 reaper for clean signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default command
-CMD ["autoclaw", "server", "--port", "8080"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -fsS http://localhost:8080/api/status > /dev/null || exit 1
+
+# Default: Go binary. Override CMD with `python3 agent.py` for the Python path.
+CMD ["autoclaw", "--port", "8080"]

@@ -1,255 +1,130 @@
 # Autoclaw
 
-> No-code self-improving automation loop for Claude Cowork. Based on Karpathy's autoresearch pattern.
+> Self-improving AI experiment loop. **You** edit `context.md`. **AI** edits code. **Git** keeps the receipts.
 
-## Quick Start
+[![CI](https://github.com/dnzengou/autoclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/dnzengou/autoclaw/actions/workflows/ci.yml)
+[![Docker](https://github.com/dnzengou/autoclaw/actions/workflows/docker.yml/badge.svg)](https://github.com/dnzengou/autoclaw/actions/workflows/docker.yml)
+[![Android](https://github.com/dnzengou/autoclaw/actions/workflows/android.yml/badge.svg)](https://github.com/dnzengou/autoclaw/actions/workflows/android.yml)
+[![Release](https://img.shields.io/github/v/release/dnzengou/autoclaw?display_name=tag&sort=semver)](https://github.com/dnzengou/autoclaw/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![pip](https://img.shields.io/pypi/v/autoclaw?label=pip)](https://pypi.org/project/autoclaw/)
+[![npm](https://img.shields.io/npm/v/@autoclaw/sdk?label=npm)](https://www.npmjs.com/package/@autoclaw/sdk)
+[![GHCR](https://img.shields.io/badge/ghcr-autoclaw-blue?logo=docker)](https://github.com/dnzengou/autoclaw/pkgs/container/autoclaw)
+
+```
+┌─ context.md ──────┐    ┌── Hypothesis ──┐    ┌── Run (≤300s) ──┐
+│ MISSION           │ →  │ AI proposes    │ →  │ train.py        │
+│ CONSTRAINTS       │    │ {hypothesis,   │    │ (your script)   │
+│ HYPOTHESES        │    │  params}       │    │                 │
+│ LEARNINGS         │    └────────────────┘    └────────┬────────┘
+└───────────────────┘                                   │
+        ▲                                               ▼
+        │              ┌── Score → Commit / Revert ────┐
+        │              │ rubric.json + git              │
+        └──────────────┴────────────────────────────────┘
+```
+
+## Install in 30 seconds
 
 ```bash
-# Install
-curl -fsSL https://autoclaw.dev/install.sh | sh
-
-# Initialize project
-autoclaw init my-project
-cd my-project
-
-# Edit context (your job)
-vim context.md
-
-# Start loop (AI's job)
-autoclaw run
-
-# Check results
-autoclaw status
+pip install autoclaw                                       # Python SDK + CLI
+curl -fsSL https://autoclaw.dev/install.sh | sh            # native binary
+docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest   # container
 ```
 
-## How It Works
+Other channels: `npm i @autoclaw/sdk` · `brew install dnzengou/tap/autoclaw` · `scoop install autoclaw` · `go get github.com/dnzengou/autoclaw/sdk/go` · Android APK · `.deb` · Fly.io · Railway · Render. Full matrix: [DISTRIBUTION.md](DISTRIBUTION.md).
 
-```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│  Human      │─────▶│   Claude    │─────▶│   Agent     │
-│  (context)  │      │   (harness) │      │   (code)    │
-└─────────────┘      └─────────────┘      └──────┬──────┘
-       ▲                                          │
-       └──────────────────────────────────────────┘
-                    (results feedback)
-```
-
-1. **Human** edits `context.md` - sets mission, constraints, hypotheses
-2. **Claude** generates hypothesis and code changes
-3. **Agent** runs experiment within time budget
-4. **Eval** scores result against rubric
-5. **Git** commits improvements, reverts regressions
-6. **Loop** repeats indefinitely
-
-## Core Concepts
-
-### Context-Driven
-Human controls direction via `context.md`:
-- **MISSION**: What we're building
-- **CONSTRAINTS**: Rules and limits
-- **HYPOTHESIS QUEUE**: What to try next
-- **LEARNINGS**: Accumulated knowledge (AI appends)
-
-### Time-Budgeted
-Every experiment runs for fixed time (default 300s):
-- Comparable across hardware
-- Prevents runaway experiments
-- ~12 experiments/hour
-
-### Metric-Driven
-Single primary metric (lower validation loss = better):
-- Fair comparison of all changes
-- Architecture-agnostic
-- Easy to understand
-
-## Installation
-
-### From Source (Rust)
-```bash
-git clone https://github.com/dnzengou/autoclaw
-cd autoclaw
-cargo build --release
-sudo cp target/release/autoclaw /usr/local/bin
-```
-
-### Docker
-```bash
-docker run -p 8080:8080 dnzengou/autoclaw:latest
-```
-
-### Homebrew
-```bash
-brew install autoclaw/tap/autoclaw
-```
-
-## Usage
-
-### CLI
+## Quickstart
 
 ```bash
-# Initialize project
+mkdir my-experiment && cd my-experiment
 autoclaw init
-
-# Start agent loop
-autoclaw run --context context.md --budget 300
-
-# Start API server
-autoclaw server --port 8080
-
-# Deploy
-autoclaw deploy fly
+export ANTHROPIC_API_KEY=sk-ant-...                        # or OPENAI / DEEPSEEK
+$EDITOR context.md
+autoclaw run --budget 300                                  # ~12 experiments
+open http://localhost:8080
 ```
 
-### Configuration
+## Read this next
 
-Environment variables:
-```bash
-ANTHROPIC_API_KEY=sk-ant-...
-AUTOCALW_BUDGET=300
-AUTOCALW_CONTEXT=context.md
-RUST_LOG=info
+| Document | When to read |
+|---|---|
+| [HOWTO.md](HOWTO.md) | First time using Autoclaw — why/what/how + 6 use cases + full API reference |
+| [DISTRIBUTION.md](DISTRIBUTION.md) | Pick the right install channel for your stack |
+| [BLUEPRINT.md](BLUEPRINT.md) | Architecture, roadmap, release flow |
+| [mobile/SIDELOAD.md](mobile/SIDELOAD.md) | Install the Android APK without the Play Store |
+| [mobile/PLAY_STORE.md](mobile/PLAY_STORE.md) | Publish the mobile app to Google Play |
+| [PRIVACY.md](PRIVACY.md) | What we collect (nothing) and why |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the Rust core + server + dashboard fit together |
+| [docs/CLAUDE_COWORK_INTEGRATION.md](docs/CLAUDE_COWORK_INTEGRATION.md) | Integrating with Claude Cowork |
+
+## SDKs
+
+```python
+# Python
+import asyncio
+from autoclaw import AutoclawClient
+
+async def main():
+    async with AutoclawClient("http://localhost:8080") as c:
+        await c.start()
+        async for exp in c.stream_experiments():
+            print(f"{exp.id} → {exp.score:.4f}")
+            if exp.score > 0.9:
+                await c.stop(); break
+
+asyncio.run(main())
 ```
 
-### Context Template
+```ts
+// TypeScript
+import { AutoclawClient } from "@autoclaw/sdk";
 
-```markdown
-# AUTOCALW CONTEXT
-
-## MISSION
-Build self-improving automation.
-
-## CONSTRAINTS
-- Time budget: 300s
-- Metric: lower val_bpb
-
-## CURRENT STATE
-- Best: 2.45
-- Iterations: 42
-
-## HYPOTHESIS QUEUE
-1. Increase learning rate
-2. Add dropout
-
-## LEARNINGS
-<!-- AI appends here -->
+const c = new AutoclawClient({ baseUrl: "http://localhost:8080" });
+await c.start();
+for await (const exp of c.streamExperiments()) {
+  console.log(`${exp.id} → ${exp.score.toFixed(4)}`);
+}
 ```
 
-## Architecture
+```go
+// Go
+import autoclaw "github.com/dnzengou/autoclaw/sdk/go"
 
-### Components
-
-| Component | Purpose | Language |
-|-----------|---------|----------|
-| `agent` | Main loop orchestration | Rust |
-| `context` | Context.md management | Rust |
-| `eval` | Scoring and rubrics | Rust |
-| `git` | Version control | Rust |
-| `harness` | Claude API integration | Rust |
-| `server` | HTTP API + dashboard | Rust |
-| `triggers` | Event-based automation | Rust |
-
-### Data Flow
-
-```
-context.md → Claude → code changes → train.py → eval → git commit/rollback
+c := autoclaw.NewClient("http://localhost:8080")
+c.Start(ctx)
+out := make(chan autoclaw.Experiment)
+go c.StreamExperiments(ctx, out)
+for e := range out { fmt.Printf("%s → %.4f\n", e.ID, e.Score) }
 ```
 
-## API
+## How it works
 
-### REST Endpoints
+1. **You** write goals in `context.md` (mission, constraints, hypothesis queue).
+2. **Agent** asks an LLM (Claude, GPT, DeepSeek, or local) for hypotheses.
+3. **Loop** runs each hypothesis as a `train.py` invocation under a fixed time budget.
+4. **Eval** scores results against `rubric.json`.
+5. **Git** commits improvements (`exp-NNN` + `best-*` tag on a new high score) and reverts regressions.
+6. **Dashboard** streams everything live via SSE / WebSocket.
+7. **Repeat** until budget exhausted.
 
-```
-GET  /api/status           - Agent status
-POST /api/start            - Start agent
-POST /api/stop             - Stop agent
-GET  /api/experiments      - List experiments
-GET  /api/experiments/:id  - Get experiment
-GET  /api/metrics          - Metrics snapshot
-GET  /api/best             - Best result
-GET  /api/context          - Get context
-POST /api/context          - Update context
-WS   /ws                   - Real-time updates
-```
-
-### WebSocket Events
-
-```json
-{"type": "experiment_start", "data": {"id": "..."}}
-{"type": "experiment_complete", "data": {"..."}}
-{"type": "improvement", "data": {"score": 2.1}}
-{"type": "metrics_update", "data": {"..."}}
-```
-
-## Deployment
-
-### Fly.io
-```bash
-autoclaw deploy fly
-```
-
-### Docker
-```bash
-autoclaw deploy docker
-docker run -p 8080:8080 autoclaw:latest
-```
-
-### Railway
-```bash
-autoclaw deploy railway
-```
-
-## Metrics & Analytics
-
-### Adoption
-- Activation Rate: 60% target
-- FTTV: < 5 minutes
-
-### Retention
-- Day-1: 55%
-- Day-7: 35%
-- Day-30: 20%
-
-### Monetization
-- Free → Paid: 8-12%
-- LTV/CAC: 3:1
-
-## Comparison
-
-| Feature | Autoclaw | Karpathy | Manus |
-|---------|----------|----------|-------|
-| No-code | ✓ | ✗ | Partial |
-| Self-hosted | ✓ | ✓ | ✗ |
-| Claude integration | ✓ | ✓ | ✗ |
-| Git versioning | ✓ | ✓ | ? |
-| Web dashboard | ✓ | ✗ | ✓ |
-| Open source | ✓ | ✓ | ✗ |
+Three runtime variants ship in this repo, all sharing the same API surface:
+- **Rust** (`src/`, ~2650 lines) — production server, full feature set.
+- **Go** (`agent.go`, single file) — cross-compiles trivially, default in the Docker image.
+- **Python** (`agent.py`, stdlib only) — for notebooks, smoke testing, no compile.
 
 ## Roadmap
 
-- [x] Core agent loop
-- [x] Git integration
-- [x] Web dashboard
-- [x] Claude harness
-- [ ] Multi-agent support
-- [ ] Distributed training
-- [ ] Plugin system
-- [ ] Mobile app
+✅ Multi-channel distribution · ✅ Cross-platform CI · ✅ Tauri 2 mobile shell · 🔲 Multi-agent · 🔲 Plugin system · 🔲 Distributed training · 🔲 Community leaderboard.
 
-## Contributing
+Track open work: [BLUEPRINT.md](BLUEPRINT.md).
 
-```bash
-git clone https://github.com/dnzengou/autoclaw
-cd autoclaw
-cargo test
-cargo build
-```
+## Origins & family
+
+Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). Built for [Claude Cowork](https://claude.ai).
+
+Part of the [Desired Solutions](https://desiredsolutions.space) product family. Sibling product: [Clow.studio](https://clow-tau.vercel.app) — one-person AI agency stack (9 Telegram bots, 8 web apps, 5 templates).
 
 ## License
 
-MIT
-
-## Credits
-
-- Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch)
-- Built for [Claude Cowork](https://claude.ai)
-- Powered by Rust + Tokio
+MIT — see [LICENSE](LICENSE).

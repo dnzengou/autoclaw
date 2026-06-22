@@ -1,0 +1,56 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    labels: [dependencies, rust]
+    groups:
+      tokio-stack:
+        patterns: [tokio*, tower*, axum, hyper*]
+      tracing-stack:
+        patterns: [tracing*, metrics*]
+
+  - package-ecosystem: cargo
+    directory: /mobile
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    labels: [dependencies, tauri]
+
+  - package-ecosystem: npm
+    directory: /ui
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    labels: [dependencies, frontend]
+    groups:
+      react-stack:
+        patterns: [react, react-*, "@types/react*"]
+      vite-stack:
+        patterns: [vite, "@vitejs/*"]
+
+  - package-ecosystem: npm
+    directory: /sdk/js
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    labels: [dependencies, sdk-js]
+
+  - package-ecosystem: gomod
+    directory: /sdk/go
+    schedule: { interval: weekly, day: monday }
+    labels: [dependencies, sdk-go]
+
+  - package-ecosystem: pip
+    directory: /sdk/python
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 3
+    labels: [dependencies, sdk-python]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    labels: [dependencies, ci]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    labels: [dependencies, docker]
