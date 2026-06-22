@@ -533,11 +533,11 @@ func runExperiment(h Hypothesis) Experiment {
 
 	// Git
 	gitCommit(expID, h.Hypothesis)
-	gitHash := gitHash()
+	hash := gitHash()
 
 	if status == "reverted" {
 		gitRevert()
-		gitHash = gitHash()
+		hash = gitHash()
 	}
 
 	return Experiment{
@@ -548,7 +548,7 @@ func runExperiment(h Hypothesis) Experiment {
 		Score:           math.Round(score*10000) / 10000,
 		Status:          status,
 		Timestamp:       time.Now().UTC().Format(time.RFC3339),
-		GitHash:         gitHash,
+		GitHash:         hash,
 		DurationSeconds: math.Round(duration*10) / 10,
 	}
 }
