@@ -20,7 +20,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 config = "0.14"
 clap = { version = "4.4", features = ["derive"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
-dashmap = "5.5"
+dashmap = "6.2"
 parking_lot = "0.12"
 async-trait = "0.1"
 axum = { version = "0.7", features = ["ws"] }
