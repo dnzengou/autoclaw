@@ -1,6 +1,6 @@
 # Build stage — Go agent (single binary, stdlib only).
 # The Rust path lives in Dockerfile.rust for when `cargo build --release` is green.
-FROM golang:1.22-alpine3.20 AS go-builder
+FROM golang:1.24-alpine3.20 AS go-builder
 WORKDIR /build
 
 COPY agent.go ./
