@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Play, Square, RotateCcw, GitBranch, TrendingUp, Clock, Activity } from 'lucide-react';
 import { MetricsCard } from './components/MetricsCard';
 import { ExperimentList } from './components/ExperimentList';

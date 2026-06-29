@@ -1,0 +1,4 @@
+# Generated icons live here after running:
+#   cargo tauri icon icons/icon.svg
+#
+# Commit the generated files; they are referenced from tauri.conf.json at build time.

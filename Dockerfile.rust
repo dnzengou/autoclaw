@@ -1,0 +1,33 @@
+# Rust-based build — disabled in main pipeline until `cargo build --release`
+# is green in src/. To use: docker build -f Dockerfile.rust .
+FROM rust:1.75-slim-bookworm AS builder
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    pkg-config libssl-dev libgit2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Cargo.toml ./
+COPY src ./src
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y \
+    ca-certificates git libgit2-1.5 curl tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r autoclaw && useradd -r -g autoclaw autoclaw
+
+WORKDIR /app
+COPY --from=builder /app/target/release/autoclaw /usr/local/bin/autoclaw
+RUN mkdir -p .autoclaw/metrics .autoclaw/logs .autoclaw/checkpoints && \
+    chown -R autoclaw:autoclaw /app
+
+USER autoclaw
+ENV PORT=8080 RUST_LOG=info AUTOCALW_WORKSPACE=/app
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -fsS http://localhost:8080/api/status > /dev/null || exit 1
+
+CMD ["autoclaw", "server", "--port", "8080"]

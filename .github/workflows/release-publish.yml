@@ -1,0 +1,122 @@
+name: Release · Update Package Manifests
+
+# After release.yml uploads binaries to a GitHub Release, this workflow:
+#   1. Fetches each binary's published SHA256
+#   2. Patches packaging/homebrew/autoclaw.rb + packaging/scoop/autoclaw.json
+#   3. Opens a PR back to main with the updated manifests
+#
+# Why a PR (not a direct push): Homebrew + Scoop changes affect every existing
+# installation. Human review catches checksum-paste mistakes before they break
+# `brew upgrade` for every user.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          [ -n "$TAG" ] || { echo "no tag"; exit 1; }
+          VERSION="${TAG#v}"
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch release asset SHA256s
+        id: sha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG"
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$api" > /tmp/release.json
+
+          # Each release asset has a sibling .sha256 file. Pull both, parse the hash.
+          for asset in \
+            "autoclaw-x86_64-unknown-linux-gnu" \
+            "autoclaw-aarch64-unknown-linux-gnu" \
+            "autoclaw-x86_64-apple-darwin" \
+            "autoclaw-aarch64-apple-darwin" \
+            "autoclaw-x86_64-pc-windows-msvc.exe"
+          do
+            url="https://github.com/${{ github.repository }}/releases/download/$TAG/$asset.sha256"
+            hash=$(curl -fsSL "$url" | awk '{print $1}')
+            key=$(echo "$asset" | tr '.-' '__')
+            echo "${key}=${hash}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Patch Homebrew formula
+        env:
+          V: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          F=packaging/homebrew/autoclaw.rb
+          sed -i "s/^  version \".*\"/  version \"$V\"/" "$F"
+          sed -i "s|REPLACE_WITH_RELEASE_SHA256_DARWIN_ARM64|${{ steps.sha.outputs.autoclaw_aarch64_apple_darwin }}|g" "$F"
+          sed -i "s|REPLACE_WITH_RELEASE_SHA256_DARWIN_AMD64|${{ steps.sha.outputs.autoclaw_x86_64_apple_darwin }}|g" "$F"
+          sed -i "s|REPLACE_WITH_RELEASE_SHA256_LINUX_ARM64|${{ steps.sha.outputs.autoclaw_aarch64_unknown_linux_gnu }}|g" "$F"
+          sed -i "s|REPLACE_WITH_RELEASE_SHA256_LINUX_AMD64|${{ steps.sha.outputs.autoclaw_x86_64_unknown_linux_gnu }}|g" "$F"
+
+      - name: Patch Scoop manifest
+        env:
+          V: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          F=packaging/scoop/autoclaw.json
+          # version: line + hash: line + URL version
+          node -e "
+            const fs = require('fs');
+            const j = JSON.parse(fs.readFileSync('$F','utf8'));
+            j.version = '$V';
+            j.architecture['64bit'].url =
+              'https://github.com/${{ github.repository }}/releases/download/v$V/autoclaw-x86_64-pc-windows-msvc.exe';
+            j.architecture['64bit'].hash = '${{ steps.sha.outputs.autoclaw_x86_64_pc_windows_msvc_exe }}';
+            fs.writeFileSync('$F', JSON.stringify(j, null, 2) + '\n');
+          "
+
+      - name: Patch Debian control
+        env:
+          V: ${{ steps.tag.outputs.version }}
+        run: |
+          sed -i "s/^Version: .*/Version: $V/" packaging/debian/control
+
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/release-${{ steps.tag.outputs.version }}-manifests
+          commit-message: "chore(release): update Homebrew + Scoop + .deb manifests for ${{ steps.tag.outputs.tag }}"
+          title: "chore(release): manifest updates for ${{ steps.tag.outputs.tag }}"
+          body: |
+            Auto-generated from `release-publish.yml` after `${{ steps.tag.outputs.tag }}` was published.
+
+            Updated files:
+            - `packaging/homebrew/autoclaw.rb` — version + SHA256 × 4
+            - `packaging/scoop/autoclaw.json` — version + SHA256 + URL
+            - `packaging/debian/control` — version
+
+            Verify each SHA256 matches `https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}` before merging.
+
+            Once merged, sync to the tap / bucket repos:
+            ```
+            git push tap-repo HEAD:main           # if tap is a separate repo
+            git push scoop-bucket-repo HEAD:main  # if bucket is a separate repo
+            ```
+          labels: release, automation

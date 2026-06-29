@@ -43,6 +43,10 @@ jobs:
         working-directory: ui
         run: npm install && npm run build
 
+      - name: Generate Tauri icons (Android needs the full pack)
+        working-directory: mobile
+        run: cargo tauri icon icons/icon.svg
+
       - name: Init Android project
         working-directory: mobile
         env:
