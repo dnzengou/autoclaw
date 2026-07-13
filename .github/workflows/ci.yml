@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 # Docker builds live in docker.yml. Fly.io deploy lives in fly-deploy.yml (when FLY_API_TOKEN is set).
-# This workflow only owns Rust quality gates.
+# This workflow owns the Rust and Go quality gates. All gates are blocking.
 
 jobs:
   rust:
@@ -31,22 +31,31 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
-      # TODO(2026-09-01): drop continue-on-error once src/ is rustfmt-clean.
       - name: cargo fmt
         run: cargo fmt --all -- --check
-        continue-on-error: true
 
-      # TODO(2026-09-01): drop continue-on-error once clippy warnings are resolved.
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
-        continue-on-error: true
 
-      # TODO(2026-09-01): drop continue-on-error once the Rust test suite is unstuck.
       - name: cargo test
         run: cargo test --verbose
-        continue-on-error: true
 
-      # TODO(2026-09-01): drop continue-on-error once Cargo.lock + src/ compile.
       - name: cargo build --release
         run: cargo build --release
-        continue-on-error: true
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+
+      - name: gofmt
+        run: test -z "$(gofmt -l agent.go evo.go deals.go)"
+
+      - name: go vet
+        run: go vet .
+
+      - name: go build
+        run: go build .

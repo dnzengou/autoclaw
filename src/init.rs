@@ -6,13 +6,18 @@ use tracing::info;
 pub async fn create_project(path: &str) -> Result<()> {
     let base_path = Path::new(path);
     fs::create_dir_all(base_path).await?;
-    
+
     // Create directory structure
-    let dirs = [".autoclaw", ".autoclaw/metrics", ".autoclaw/logs", ".autoclaw/checkpoints"];
+    let dirs = [
+        ".autoclaw",
+        ".autoclaw/metrics",
+        ".autoclaw/logs",
+        ".autoclaw/checkpoints",
+    ];
     for dir in &dirs {
         fs::create_dir_all(base_path.join(dir)).await?;
     }
-    
+
     // Create context.md
     let context_content = r#"# AUTOCALW CONTEXT
 
@@ -45,7 +50,7 @@ Build self-improving automation. Human edits this file. AI edits code. Loop fore
 - Metrics collect
 "#;
     fs::write(base_path.join("context.md"), context_content).await?;
-    
+
     // Create eval_rubric.json
     let rubric_content = r#"{
   "name": "Autoclaw Default",
@@ -98,7 +103,7 @@ Build self-improving automation. Human edits this file. AI edits code. Loop fore
   }
 }"#;
     fs::write(base_path.join("eval_rubric.json"), rubric_content).await?;
-    
+
     // Create sample train.py
     let train_content = r#"# train.py - Agent modifies this file
 # This is a minimal example - replace with your actual training code
@@ -137,7 +142,7 @@ if __name__ == "__main__":
     train()
 "#;
     fs::write(base_path.join("train.py"), train_content).await?;
-    
+
     // Create .gitignore
     let gitignore = r#".autoclaw/
 __pycache__/
@@ -146,7 +151,7 @@ __pycache__/
 *.log
 "#;
     fs::write(base_path.join(".gitignore"), gitignore).await?;
-    
+
     // Create README.md
     let readme = r#"# Autoclaw Project
 
@@ -165,7 +170,7 @@ Self-improving automation powered by Claude.
 - `eval_rubric.json` - Evaluation criteria
 "#;
     fs::write(base_path.join("README.md"), readme).await?;
-    
+
     info!("Created Autoclaw project at {}", path);
     Ok(())
 }

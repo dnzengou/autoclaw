@@ -1,6 +1,6 @@
-use anyhow::{Result, Context as _};
+use anyhow::Result;
 use std::process::Command;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 pub async fn deploy(target: &str) -> Result<()> {
     match target {
@@ -17,7 +17,7 @@ pub async fn deploy(target: &str) -> Result<()> {
 
 async fn deploy_fly() -> Result<()> {
     info!("Deploying to Fly.io...");
-    
+
     // Check if fly.toml exists
     if !std::path::Path::new("fly.toml").exists() {
         // Create fly.toml
@@ -45,12 +45,10 @@ primary_region = "iad"
 "#;
         tokio::fs::write("fly.toml", fly_toml).await?;
     }
-    
+
     // Run fly deploy
-    let output = Command::new("fly")
-        .args(["deploy"])
-        .output()?;
-    
+    let output = Command::new("fly").args(["deploy"]).output()?;
+
     if output.status.success() {
         info!("Deployed to Fly.io successfully");
         Ok(())
@@ -63,7 +61,7 @@ primary_region = "iad"
 
 async fn deploy_docker() -> Result<()> {
     info!("Building Docker image...");
-    
+
     // Create Dockerfile if not exists
     if !std::path::Path::new("Dockerfile").exists() {
         let dockerfile = r#"# Build stage
@@ -95,12 +93,12 @@ CMD ["autoclaw", "server"]
 "#;
         tokio::fs::write("Dockerfile", dockerfile).await?;
     }
-    
+
     // Build image
     let output = Command::new("docker")
         .args(["build", "-t", "autoclaw:latest", "."])
         .output()?;
-    
+
     if output.status.success() {
         info!("Docker image built successfully");
         info!("Run with: docker run -p 8080:8080 autoclaw:latest");
@@ -114,7 +112,7 @@ CMD ["autoclaw", "server"]
 
 async fn deploy_railway() -> Result<()> {
     info!("Deploying to Railway...");
-    
+
     // Create railway.json if not exists
     if !std::path::Path::new("railway.json").exists() {
         let railway_json = r#"{
@@ -133,11 +131,9 @@ async fn deploy_railway() -> Result<()> {
 }"#;
         tokio::fs::write("railway.json", railway_json).await?;
     }
-    
-    let output = Command::new("railway")
-        .args(["up"])
-        .output()?;
-    
+
+    let output = Command::new("railway").args(["up"]).output()?;
+
     if output.status.success() {
         info!("Deployed to Railway successfully");
         Ok(())
@@ -150,7 +146,7 @@ async fn deploy_railway() -> Result<()> {
 
 async fn deploy_render() -> Result<()> {
     info!("Deploying to Render...");
-    
+
     // Create render.yaml if not exists
     if !std::path::Path::new("render.yaml").exists() {
         let render_yaml = r#"services:
@@ -168,7 +164,7 @@ async fn deploy_render() -> Result<()> {
 "#;
         tokio::fs::write("render.yaml", render_yaml).await?;
     }
-    
+
     info!("Render configuration created. Push to GitHub and connect to Render.");
     Ok(())
 }
@@ -199,7 +195,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-"#.to_string()
+"#
+    .to_string()
 }
 
 pub fn generate_github_actions() -> String {
@@ -226,5 +223,6 @@ jobs:
       - run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-"#.to_string()
+"#
+    .to_string()
 }
