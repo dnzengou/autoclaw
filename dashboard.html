@@ -1,427 +1,406 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autoclaw Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autoclaw</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-
-/* Header */
-.header { background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.header h1 { font-size: 20px; font-weight: 600; color: #f97316; }
-.header h1 span { color: #64748b; font-weight: 400; }
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.controls button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-.btn-start { background: #22c55e; color: #fff; }
-.btn-start:hover { background: #16a34a; }
-.btn-stop { background: #ef4444; color: #fff; }
-.btn-stop:hover { background: #dc2626; }
-.btn-reset { background: #64748b; color: #fff; }
-.btn-reset:hover { background: #475569; }
-.controls button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Metric Cards */
-.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 24px; }
-.metric-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
-.metric-card .label { font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
-.metric-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
-.metric-card .value.green { color: #22c55e; }
-.metric-card .value.orange { color: #f97316; }
-.metric-card .value.blue { color: #3b82f6; }
-.metric-card .value.purple { color: #a855f7; }
-
-/* Main Layout */
-.main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 24px 24px; }
-@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
-
-.panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
-.panel-header { padding: 12px 16px; border-bottom: 1px solid #334155; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
-.panel-body { padding: 16px; }
-
-/* Chart */
-.chart-container { position: relative; height: 250px; }
-
-/* Experiment Table */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-weight: 500; cursor: pointer; user-select: none; }
-th:hover { color: #e2e8f0; }
-td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
-tr:hover td { background: #1a2332; }
-
-.status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.status-completed { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; }
-.status-running { background: #f9731620; color: #f97316; border: 1px solid #f9731640; animation: pulse 1.5s infinite; }
-.status-failed { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
-.status-reverted { background: #64748b20; color: #64748b; border: 1px solid #64748b40; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-/* Context Editor */
-.context-editor { width: 100%; min-height: 300px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; padding: 12px; resize: vertical; line-height: 1.5; }
-.context-editor:focus { outline: none; border-color: #f97316; }
-.editor-actions { display: flex; gap: 8px; margin-top: 8px; }
-.editor-actions button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; }
-.btn-save { background: #f97316; color: #fff; }
-.btn-save:hover { background: #ea580c; }
-
-/* Live Feed */
-.feed { max-height: 300px; overflow-y: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; }
-.feed-entry { padding: 6px 0; border-bottom: 1px solid #1e293b; display: flex; gap: 8px; }
-.feed-time { color: #64748b; white-space: nowrap; }
-.feed-id { color: #f97316; font-weight: 500; }
-.feed-score { color: #22c55e; }
-.feed-score.bad { color: #ef4444; }
-.feed-hypo { color: #94a3b8; }
-
-/* Status indicator */
-.status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.status-dot.idle { background: #64748b; }
-.status-dot.running { background: #22c55e; animation: pulse 1.5s infinite; }
-.status-dot.stopped { background: #ef4444; }
-
-/* Empty state */
-.empty-state { text-align: center; padding: 40px; color: #64748b; }
-.empty-state p { margin-top: 8px; font-size: 14px; }
+:root{
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#222220;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+  --accent:#3987e5;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--page);color:var(--ink-2);line-height:1.5}
+.container{max-width:1200px;margin:0 auto;padding:16px 20px 48px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--grid)}
+h1{font-size:1.25rem;color:var(--ink);font-weight:650;letter-spacing:.01em}
+h1 span{color:var(--muted);font-weight:400;font-size:.85rem;margin-left:8px}
+.status{display:flex;gap:8px;align-items:center;font-size:.85rem}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--baseline)}
+.dot.on{background:var(--good);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.4}}
+nav{display:flex;gap:4px;margin:16px 0}
+nav button{background:none;border:1px solid transparent;color:var(--ink-2);padding:8px 16px;border-radius:8px;font-size:.9rem;cursor:pointer}
+nav button:hover{background:var(--surface)}
+nav button.active{background:var(--surface);border-color:var(--border);color:var(--ink)}
+.tab{display:none}.tab.active{display:block}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.tile h3{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:4px}
+.tile .v{font-size:1.7rem;font-weight:650;color:var(--ink)}
+.tile .sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.card>h2{font-size:.9rem;color:var(--ink);padding:12px 16px;border-bottom:1px solid var(--grid);font-weight:600}
+.card .body{padding:12px 16px}
+.controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+button.btn{padding:9px 18px;border:1px solid var(--border);border-radius:8px;font-size:.88rem;cursor:pointer;background:var(--surface);color:var(--ink)}
+button.btn:hover{background:var(--surface-2)}
+button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.btn.primary:hover{filter:brightness(1.12)}
+button.btn.danger{color:var(--critical)}
+button.btn:disabled{opacity:.45;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th,td{padding:9px 16px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:.7rem;letter-spacing:.05em}
+td{color:var(--ink-2)}
+td.num{font-variant-numeric:tabular-nums;text-align:right}
+th.num{text-align:right}
+tr:hover td{background:var(--surface-2)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:600;border:1px solid var(--border)}
+.badge.good{color:var(--good)} .badge.warning{color:var(--warning)}
+.badge.serious{color:var(--serious)} .badge.critical{color:var(--critical)}
+.badge.neutral{color:var(--ink-2)}
+.chartwrap{position:relative;padding:8px 16px 16px}
+#tooltip{position:absolute;pointer-events:none;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.75rem;color:var(--ink);display:none;white-space:nowrap;z-index:5}
+textarea{width:100%;min-height:180px;background:var(--page);color:var(--ink-2);border:1px solid var(--grid);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:.82rem;resize:vertical}
+input[type=text]{background:var(--page);color:var(--ink);border:1px solid var(--grid);border-radius:8px;padding:8px 10px;font-size:.85rem;width:100%}
+.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.formrow.full{grid-template-columns:1fr}
+.actions button{padding:4px 10px;font-size:.72rem;margin-right:4px;margin-bottom:2px}
+.empty{padding:24px 16px;color:var(--muted);font-size:.85rem;text-align:center}
+.fit{overflow-x:auto}
+details.prop{font-size:.78rem}
+details.prop summary{cursor:pointer}
+details.prop pre{white-space:pre-wrap;color:var(--muted);margin-top:6px;font-family:inherit}
+.note{font-size:.75rem;color:var(--muted);margin-top:8px}
+@media (max-width:640px){.formrow{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<div class="container">
+  <header>
+    <h1>Autoclaw <span>self-evolving experiment loop</span></h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Idle</span></div>
+  </header>
 
-<div class="header">
-  <div>
-    <h1>🦞 Autoclaw <span>Experiment Dashboard</span></h1>
-    <div class="status-indicator" id="statusIndicator">
-      <span class="status-dot idle" id="statusDot"></span>
-      <span id="statusText">Idle</span>
+  <nav>
+    <button class="active" data-tab="loop">Loop</button>
+    <button data-tab="evo">Evolution</button>
+    <button data-tab="deals">Deals</button>
+  </nav>
+
+  <!-- ─── LOOP ─────────────────────────────────────────────────────────── -->
+  <section class="tab active" id="tab-loop">
+    <div class="tiles">
+      <div class="tile"><h3>Experiments</h3><div class="v" id="tExp">0</div></div>
+      <div class="tile"><h3>Best score</h3><div class="v" id="tBest">–</div></div>
+      <div class="tile"><h3>Kept / reverted</h3><div class="v" id="tKept">–</div></div>
+      <div class="tile"><h3>Budget left</h3><div class="v" id="tBudget">–</div><div class="sub">seconds</div></div>
     </div>
-  </div>
-  <div class="controls">
-    <button class="btn-start" id="btnStart" onclick="startLoop()">▶ Start</button>
-    <button class="btn-stop" id="btnStop" onclick="stopLoop()" disabled>■ Stop</button>
-    <button class="btn-reset" id="btnReset" onclick="resetLoop()">↺ Reset</button>
-  </div>
-</div>
 
-<div class="metrics" id="metrics">
-  <div class="metric-card">
-    <div class="label">Experiments</div>
-    <div class="value blue" id="totalExps">0</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Best Score</div>
-    <div class="value green" id="bestScore">—</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Budget Left</div>
-    <div class="value orange" id="budgetLeft">—</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Uptime</div>
-    <div class="value purple" id="uptime">0s</div>
-  </div>
-</div>
+    <div class="controls">
+      <button class="btn primary" onclick="api('/api/start','POST')">Start</button>
+      <button class="btn" onclick="api('/api/stop','POST')">Stop</button>
+      <button class="btn danger" onclick="if(confirm('Clear all experiment history?'))api('/api/reset','POST').then(()=>{experiments=[];renderLoop()})">Reset</button>
+    </div>
 
-<div class="main">
-  <div class="panel">
-    <div class="panel-header">Score Progression</div>
-    <div class="panel-body">
-      <div class="chart-container">
-        <canvas id="scoreChart"></canvas>
+    <div class="card">
+      <h2>Score over experiments</h2>
+      <div class="chartwrap">
+        <svg id="chart" width="100%" height="220" role="img" aria-label="Line chart of experiment scores over time; the same data is in the table below"></svg>
+        <div id="tooltip"></div>
       </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="panel-header">Live Feed</div>
-    <div class="panel-body feed" id="feed">
-      <div class="empty-state">
-        <div style="font-size: 32px;">⏳</div>
-        <p>Waiting for experiments...</p>
+    <div class="card">
+      <h2>Experiments</h2>
+      <div class="fit"><table>
+        <thead><tr><th>ID</th><th>Hypothesis</th><th class="num">Score</th><th class="num">Duration</th><th>Status</th></tr></thead>
+        <tbody id="expRows"><tr><td colspan="5" class="empty">No experiments yet — press Start.</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Context (context.md — human steering)</h2>
+      <div class="body">
+        <textarea id="ctx" spellcheck="false"></textarea>
+        <div class="controls" style="margin:10px 0 0">
+          <button class="btn" onclick="loadContext()">Reload</button>
+          <button class="btn primary" onclick="saveContext()">Save</button>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="panel" style="grid-column: 1 / -1;">
-    <div class="panel-header">Experiment History</div>
-    <div class="panel-body">
-      <div class="table-wrap">
-        <table id="expTable">
-          <thead>
-            <tr>
-              <th onclick="sortTable('id')">ID ↕</th>
-              <th onclick="sortTable('hypothesis')">Hypothesis ↕</th>
-              <th onclick="sortTable('score')">Score ↕</th>
-              <th onclick="sortTable('status')">Status ↕</th>
-              <th onclick="sortTable('timestamp')">Time ↕</th>
-              <th>Git Hash</th>
-            </tr>
-          </thead>
-          <tbody id="expBody">
-            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>
-          </tbody>
-        </table>
+  <!-- ─── EVOLUTION ────────────────────────────────────────────────────── -->
+  <section class="tab" id="tab-evo">
+    <div class="tiles">
+      <div class="tile"><h3>Population</h3><div class="v" id="ePop">–</div><div class="sub">strategy genomes</div></div>
+      <div class="tile"><h3>Trajectories</h3><div class="v" id="eTraj">–</div><div class="sub">training signals on disk</div></div>
+      <div class="tile"><h3>Stagnation</h3><div class="v" id="eStag">–</div><div class="sub" id="eBreaker">circuit breaker armed</div></div>
+      <div class="tile"><h3>Generations</h3><div class="v" id="eGen">–</div><div class="sub">deepest lineage</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Strategy genomes</h2>
+      <div class="fit"><table>
+        <thead><tr><th>ID</th><th>Niche</th><th>Strategy</th><th class="num">Fitness</th><th class="num">Plays</th><th class="num">Wins</th><th class="num">Gen</th></tr></thead>
+        <tbody id="genomeRows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table></div>
+      <div class="body note">Genomes are selected by softmax over fitness each iteration. Wins spawn learned genomes; stagnation trips the circuit breaker and injects diversity. Every outcome appends to <code>.autoclaw/evo/trajectories.jsonl</code> — the accumulating trajectory dataset is the moat.</div>
+    </div>
+
+    <div class="card">
+      <h2>Recent trajectories</h2>
+      <div class="fit"><table>
+        <thead><tr><th>Experiment</th><th>Genome</th><th>Hypothesis</th><th class="num">Score</th><th class="num">Δ</th><th>Result</th></tr></thead>
+        <tbody id="trajRows"><tr><td colspan="6" class="empty">No trajectories yet.</td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ─── DEALS ────────────────────────────────────────────────────────── -->
+  <section class="tab" id="tab-deals">
+    <div class="tiles">
+      <div class="tile"><h3>Open</h3><div class="v" id="dOpen">–</div><div class="sub">awaiting approval</div></div>
+      <div class="tile"><h3>In delivery</h3><div class="v" id="dActive">–</div></div>
+      <div class="tile"><h3>Paid</h3><div class="v" id="dPaid">–</div></div>
+      <div class="tile"><h3>Revenue (paid)</h3><div class="v" id="dRev">–</div><div class="sub">USD</div></div>
+    </div>
+
+    <div class="card">
+      <h2>New prospect</h2>
+      <div class="body">
+        <div class="formrow">
+          <input type="text" id="dCustomer" placeholder="Customer / company">
+          <input type="text" id="dContact" placeholder="Contact (email, optional)">
+        </div>
+        <div class="formrow full">
+          <input type="text" id="dRequest" placeholder="What do they need? (matched against the toolbox)">
+        </div>
+        <div class="controls" style="margin:0">
+          <button class="btn primary" onclick="addDeal()">Add &amp; qualify</button>
+          <button class="btn" onclick="fetchFeed()" title="Pulls prospects from AUTOCLAW_DEALS_FEED (explicit trigger only)">Fetch from feed</button>
+        </div>
+        <div class="note">Qualification matches requests against the toolbox: Clow · SAI Agency · MOOC Studio · ProductizeYou · Funding Dashboard · CAS Lab. Nothing is sent to a customer automatically — every deal needs your approval below.</div>
       </div>
     </div>
-  </div>
 
-  <div class="panel" style="grid-column: 1 / -1;">
-    <div class="panel-header">Context Editor</div>
-    <div class="panel-body">
-      <textarea class="context-editor" id="contextEditor" placeholder="Loading context..."></textarea>
-      <div class="editor-actions">
-        <button class="btn-save" onclick="saveContext()">💾 Save Context</button>
-      </div>
+    <div class="card">
+      <h2>Pipeline</h2>
+      <div class="fit"><table>
+        <thead><tr><th>Customer</th><th>Request / proposal</th><th>Tools</th><th class="num">Price</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="dealRows"><tr><td colspan="6" class="empty">No deals yet.</td></tr></tbody>
+      </table></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
-// ─── State ──────────────────────────────────────────────────────────────────
+"use strict";
 let experiments = [];
-let sortField = null;
-let sortAsc = true;
-let scoreChart = null;
 
-// ─── SSE Connection ─────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path, method = 'GET', body) {
+  const opts = { method, headers: {'Content-Type': 'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  return r.json().catch(() => ({}));
+}
+const trunc = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
+
+// ── tabs ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $('tab-' + b.dataset.tab).classList.add('active');
+  if (b.dataset.tab === 'evo') loadEvo();
+  if (b.dataset.tab === 'deals') loadDeals();
+});
+
+// ── loop tab ─────────────────────────────────────────────────────────────
+function renderLoop() {
+  const n = experiments.length;
+  $('tExp').textContent = n;
+  const best = experiments.reduce((m, e) => Math.max(m, e.score), 0);
+  $('tBest').textContent = n ? best.toFixed(4) : '–';
+  const kept = experiments.filter(e => e.status === 'completed').length;
+  $('tKept').textContent = n ? `${kept} / ${n - kept}` : '–';
+
+  const rows = experiments.slice(-50).reverse().map(e => `<tr>
+    <td>${esc(e.id)}</td>
+    <td title="${esc(e.hypothesis)}">${esc(trunc(e.hypothesis, 90))}</td>
+    <td class="num">${e.score.toFixed(4)}</td>
+    <td class="num">${e.duration_seconds}s</td>
+    <td><span class="badge ${e.status === 'completed' ? 'good' : 'warning'}">${esc(e.status)}</span></td>
+  </tr>`).join('');
+  $('expRows').innerHTML = rows || '<tr><td colspan="5" class="empty">No experiments yet — press Start.</td></tr>';
+  drawChart();
+}
+
+// Single-series line chart: 2px line, crosshair + tooltip, hairline grid.
+function drawChart() {
+  const svg = $('chart'), tip = $('tooltip');
+  const W = svg.clientWidth || 800, H = 220, padL = 46, padR = 14, padT = 12, padB = 26;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const data = experiments.map(e => e.score);
+  if (data.length < 2) { svg.innerHTML = `<text x="${W/2}" y="${H/2}" fill="#898781" font-size="13" text-anchor="middle">Chart appears after two experiments</text>`; return; }
+  const lo = Math.min(...data), hi = Math.max(...data);
+  const span = (hi - lo) || 1;
+  const x = i => padL + i * (W - padL - padR) / (data.length - 1);
+  const y = v => padT + (1 - (v - lo) / span) * (H - padT - padB);
+
+  let g = '';
+  for (let t = 0; t <= 4; t++) {
+    const v = lo + span * t / 4, yy = y(v);
+    g += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#2c2c2a" stroke-width="1"/>`;
+    g += `<text x="${padL - 8}" y="${yy + 4}" fill="#898781" font-size="10" text-anchor="end">${v.toFixed(span < 0.2 ? 3 : 2)}</text>`;
+  }
+  g += `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#383835" stroke-width="1"/>`;
+  g += `<text x="${padL}" y="${H - 8}" fill="#898781" font-size="10">exp 1</text>`;
+  g += `<text x="${W - padR}" y="${H - 8}" fill="#898781" font-size="10" text-anchor="end">exp ${data.length}</text>`;
+
+  const pts = data.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  g += `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  g += `<line id="xh" y1="${padT}" y2="${H - padB}" stroke="#898781" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  g += `<circle id="hpt" r="4.5" fill="var(--accent)" stroke="#1a1a19" stroke-width="2" visibility="hidden"/>`;
+  svg.innerHTML = g;
+
+  svg.onmousemove = ev => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * W / rect.width;
+    const i = Math.max(0, Math.min(data.length - 1, Math.round((mx - padL) / ((W - padL - padR) / (data.length - 1)))));
+    const xh = svg.querySelector('#xh'), pt = svg.querySelector('#hpt');
+    xh.setAttribute('x1', x(i)); xh.setAttribute('x2', x(i)); xh.setAttribute('visibility', 'visible');
+    pt.setAttribute('cx', x(i)); pt.setAttribute('cy', y(data[i])); pt.setAttribute('visibility', 'visible');
+    const e = experiments[i];
+    tip.innerHTML = `<b>${esc(e.id)}</b> · score ${e.score.toFixed(4)}<br>${esc(trunc(e.hypothesis, 60))}`;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(x(i) * rect.width / W + 12, rect.width - tip.offsetWidth - 4) + 'px';
+    tip.style.top = (y(data[i]) * rect.height / H - 10) + 'px';
+  };
+  svg.onmouseleave = () => {
+    tip.style.display = 'none';
+    const xh = svg.querySelector('#xh'), pt = svg.querySelector('#hpt');
+    if (xh) xh.setAttribute('visibility', 'hidden');
+    if (pt) pt.setAttribute('visibility', 'hidden');
+  };
+}
+
+// ── SSE stream ───────────────────────────────────────────────────────────
 function connectSSE() {
-  const evtSource = new EventSource('/events');
-  evtSource.onmessage = function(e) {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.type === 'done') {
-        updateStatus({ running: false });
-        return;
-      }
-      if (data.id) {
-        // Update or add experiment
-        const idx = experiments.findIndex(x => x.id === data.id);
-        if (idx >= 0) experiments[idx] = data;
-        else experiments.push(data);
-        renderAll();
-      }
-    } catch(err) {
-      console.error('SSE parse error:', err);
-    }
+  const es = new EventSource('/events');
+  es.onmessage = ev => {
+    const e = JSON.parse(ev.data);
+    const i = experiments.findIndex(x => x.id === e.id);
+    if (i >= 0) experiments[i] = e; else experiments.push(e);
+    if (e.budget_remaining != null) $('tBudget').textContent = Math.max(0, e.budget_remaining).toFixed(0);
+    renderLoop();
   };
-  evtSource.onerror = function() {
-    console.log('SSE disconnected, reconnecting...');
-  };
+  es.onerror = () => { es.close(); setTimeout(connectSSE, 2000); };
 }
 
-// ─── API Calls ──────────────────────────────────────────────────────────────
-
-async function startLoop() {
-  document.getElementById('btnStart').disabled = true;
-  await fetch('/api/start', { method: 'POST' });
-  updateStatus({ running: true });
+async function pollStatus() {
+  try {
+    const s = await api('/api/status');
+    $('dot').classList.toggle('on', s.running);
+    $('statusText').textContent = s.running ? 'Running' : 'Idle';
+    if (s.budget_remaining != null) $('tBudget').textContent = Math.max(0, s.budget_remaining).toFixed(0);
+  } catch (_) {}
 }
 
-async function stopLoop() {
-  await fetch('/api/stop', { method: 'POST' });
-  updateStatus({ running: false });
-}
-
-async function resetLoop() {
-  if (!confirm('Reset all experiment data?')) return;
-  await fetch('/api/reset', { method: 'POST' });
-  experiments = [];
-  renderAll();
-  updateStatus({ running: false, total_experiments: 0, best_score: 0, budget_remaining: 0 });
-}
-
+// ── context editor ───────────────────────────────────────────────────────
+async function loadContext() { $('ctx').value = await (await fetch('/api/context')).text(); }
 async function saveContext() {
-  const content = document.getElementById('contextEditor').value;
-  await fetch('/api/context', {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: content
+  await fetch('/api/context', { method: 'POST', body: $('ctx').value });
+}
+
+// ── evolution tab ────────────────────────────────────────────────────────
+async function loadEvo() {
+  const [st, genomes, trajs] = await Promise.all([
+    api('/api/evo/status'), api('/api/evo/genomes'), api('/api/evo/trajectories')
+  ]);
+  $('ePop').textContent = st.population_size;
+  $('eTraj').textContent = st.trajectory_count;
+  $('eStag').textContent = st.stagnation;
+  $('eBreaker').textContent = st.breaker_tripped ? 'breaker about to trip' : 'circuit breaker armed';
+  $('eGen').textContent = st.generations;
+
+  const maxFit = Math.max(0.01, ...genomes.map(g => g.fitness));
+  $('genomeRows').innerHTML = genomes.sort((a, b) => b.fitness - a.fitness).map(g => `<tr>
+    <td>${esc(g.id)}${g.parent_id ? `<div class="note">← ${esc(g.parent_id)}</div>` : ''}</td>
+    <td>${esc(g.niche)}</td>
+    <td title="${esc(g.strategy)}">${esc(trunc(g.strategy, 80))}</td>
+    <td class="num">${g.fitness.toFixed(3)}
+      <svg width="56" height="6" style="margin-left:6px" aria-hidden="true"><rect width="56" height="6" rx="3" fill="#2c2c2a"/><rect width="${(56 * g.fitness / maxFit).toFixed(0)}" height="6" rx="3" fill="var(--accent)"/></svg>
+    </td>
+    <td class="num">${g.plays}</td><td class="num">${g.wins}</td><td class="num">${g.generation}</td>
+  </tr>`).join('') || '<tr><td colspan="7" class="empty">No genomes.</td></tr>';
+
+  $('trajRows').innerHTML = (trajs || []).reverse().map(t => `<tr>
+    <td>${esc(t.experiment_id)}</td><td>${esc(t.genome_id)}</td>
+    <td title="${esc(t.hypothesis)}">${esc(trunc(t.hypothesis, 70))}</td>
+    <td class="num">${t.score.toFixed(4)}</td>
+    <td class="num">${t.delta >= 0 ? '+' : ''}${t.delta.toFixed(4)}</td>
+    <td><span class="badge ${t.improved ? 'good' : 'neutral'}">${t.improved ? 'improved' : 'no gain'}</span></td>
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">No trajectories yet — run the loop.</td></tr>';
+}
+
+// ── deals tab ────────────────────────────────────────────────────────────
+const dealBadge = { new: 'neutral', qualified: 'warning', approved: 'good', rejected: 'critical', delivered: 'good', paid: 'good' };
+const dealActions = {
+  new: ['approve', 'reject'], qualified: ['approve', 'reject'],
+  approved: ['delivered', 'reject'], delivered: ['paid'], rejected: [], paid: []
+};
+
+async function loadDeals() {
+  const deals = await api('/api/deals') || [];
+  $('dOpen').textContent = deals.filter(d => d.status === 'new' || d.status === 'qualified').length;
+  $('dActive').textContent = deals.filter(d => d.status === 'approved').length;
+  $('dPaid').textContent = deals.filter(d => d.status === 'paid').length;
+  $('dRev').textContent = '$' + deals.filter(d => d.status === 'paid').reduce((s, d) => s + d.price_usd, 0).toLocaleString();
+
+  $('dealRows').innerHTML = deals.slice().reverse().map(d => `<tr>
+    <td>${esc(d.customer)}${d.contact ? `<div class="note">${esc(d.contact)}</div>` : ''}</td>
+    <td>
+      <details class="prop"><summary>${esc(trunc(d.request, 60))}</summary><pre>${esc(d.proposal || 'No proposal drafted — no toolbox match.')}</pre></details>
+      ${d.payment_link ? `<div class="note">pay: ${esc(d.payment_link)}</div>` : ''}
+    </td>
+    <td>${(d.matched_tools || []).map(esc).join('<br>') || '<span class="badge critical">no match</span>'}</td>
+    <td class="num">$${d.price_usd.toLocaleString()}</td>
+    <td><span class="badge ${dealBadge[d.status] || 'neutral'}">${esc(d.status)}</span></td>
+    <td class="actions">${(dealActions[d.status] || []).map(a =>
+      `<button class="btn ${a === 'reject' ? 'danger' : ''}" onclick="dealAction('${esc(d.id)}','${a}')">${a}</button>`).join('')}</td>
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">No deals yet.</td></tr>';
+}
+
+async function dealAction(id, action) {
+  const r = await api(`/api/deals/${id}/${action}`, 'POST');
+  if (r.error) alert(r.error);
+  loadDeals();
+}
+
+async function addDeal() {
+  const r = await api('/api/deals', 'POST', {
+    customer: $('dCustomer').value, contact: $('dContact').value, request: $('dRequest').value
   });
+  if (r.error) { alert(r.error); return; }
+  $('dCustomer').value = $('dContact').value = $('dRequest').value = '';
+  loadDeals();
 }
 
-async function loadContext() {
-  try {
-    const resp = await fetch('/api/context');
-    const text = await resp.text();
-    document.getElementById('contextEditor').value = text;
-  } catch(e) {
-    document.getElementById('contextEditor').placeholder = 'Failed to load context';
-  }
+async function fetchFeed() {
+  const r = await api('/api/deals/fetch', 'POST');
+  alert(r.error ? r.error : `Added ${r.added} prospect(s) from feed.`);
+  loadDeals();
 }
 
-async function loadStatus() {
-  try {
-    const resp = await fetch('/api/status');
-    const data = await resp.json();
-    updateStatus(data);
-  } catch(e) {}
-}
-
-async function loadResults() {
-  try {
-    const resp = await fetch('/api/results');
-    experiments = await resp.json();
-    renderAll();
-  } catch(e) {}
-}
-
-// ─── Render ─────────────────────────────────────────────────────────────────
-
-function renderAll() {
-  renderMetrics();
-  renderChart();
-  renderTable();
-  renderFeed();
-}
-
-function renderMetrics() {
-  document.getElementById('totalExps').textContent = experiments.length;
-  const best = experiments.length > 0 ? Math.max(...experiments.map(e => e.score || 0)) : 0;
-  document.getElementById('bestScore').textContent = experiments.length > 0 ? best.toFixed(4) : '—';
-
-  const last = experiments[experiments.length - 1];
-  const budget = last && last.budget_remaining !== undefined ? last.budget_remaining : 0;
-  document.getElementById('budgetLeft').textContent = budget > 0 ? budget.toFixed(0) + 's' : '—';
-}
-
-function renderChart() {
-  if (!scoreChart) {
-    const ctx = document.getElementById('scoreChart').getContext('2d');
-    scoreChart = new Chart(ctx, {
-      type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'Score',
-        data: [],
-        borderColor: '#f97316',
-        backgroundColor: '#f9731620',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
-        pointBackgroundColor: '#f97316'
-      }]},
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
-          y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  const labels = experiments.map(e => e.id);
-  const data = experiments.map(e => e.score || 0);
-  scoreChart.data.labels = labels;
-  scoreChart.data.datasets[0].data = data;
-  scoreChart.update('none');
-}
-
-function renderTable() {
-  const tbody = document.getElementById('expBody');
-  if (experiments.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>';
-    return;
-  }
-
-  let sorted = [...experiments];
-  if (sortField) {
-    sorted.sort((a, b) => {
-      let va = a[sortField] || '';
-      let vb = b[sortField] || '';
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va < vb) return sortAsc ? -1 : 1;
-      if (va > vb) return sortAsc ? 1 : -1;
-      return 0;
-    });
-  }
-
-  tbody.innerHTML = sorted.map(e => {
-    const statusClass = 'status-' + (e.status || 'unknown');
-    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
-    return `<tr>
-      <td><strong>${e.id}</strong></td>
-      <td>${(e.hypothesis || '?').substring(0, 60)}</td>
-      <td style="color:${(e.score||0) > 0.5 ? '#22c55e' : '#ef4444'}">${(e.score || 0).toFixed(4)}</td>
-      <td><span class="status-badge ${statusClass}">${e.status || '?'}</span></td>
-      <td>${time}</td>
-      <td style="font-family:monospace;font-size:11px;color:#64748b">${(e.git_hash || '').substring(0, 7)}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderFeed() {
-  const feed = document.getElementById('feed');
-  if (experiments.length === 0) {
-    feed.innerHTML = '<div class="empty-state"><div style="font-size:32px;">⏳</div><p>Waiting for experiments...</p></div>';
-    return;
-  }
-
-  const recent = experiments.slice(-20).reverse();
-  feed.innerHTML = recent.map(e => {
-    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
-    const scoreClass = (e.score || 0) > 0.5 ? 'feed-score' : 'feed-score bad';
-    return `<div class="feed-entry">
-      <span class="feed-time">${time}</span>
-      <span class="feed-id">${e.id}</span>
-      <span class="${scoreClass}">${(e.score || 0).toFixed(4)}</span>
-      <span class="feed-hypo">${(e.hypothesis || '').substring(0, 50)}</span>
-    </div>`;
-  }).join('');
-
-  feed.scrollTop = 0;
-}
-
-function updateStatus(data) {
-  const dot = document.getElementById('statusDot');
-  const text = document.getElementById('statusText');
-  const btnStart = document.getElementById('btnStart');
-  const btnStop = document.getElementById('btnStop');
-
-  if (data.running) {
-    dot.className = 'status-dot running';
-    text.textContent = 'Running';
-    btnStart.disabled = true;
-    btnStop.disabled = false;
-  } else {
-    dot.className = 'status-dot idle';
-    text.textContent = 'Idle';
-    btnStart.disabled = false;
-    btnStop.disabled = true;
-  }
-
-  if (data.total_experiments !== undefined) {
-    document.getElementById('totalExps').textContent = data.total_experiments;
-  }
-  if (data.best_score !== undefined) {
-    document.getElementById('bestScore').textContent = data.best_score.toFixed(4);
-  }
-  if (data.budget_remaining !== undefined) {
-    document.getElementById('budgetLeft').textContent = data.budget_remaining.toFixed(0) + 's';
-  }
-  if (data.uptime !== undefined) {
-    document.getElementById('uptime').textContent = data.uptime.toFixed(0) + 's';
-  }
-}
-
-function sortTable(field) {
-  if (sortField === field) sortAsc = !sortAsc;
-  else { sortField = field; sortAsc = true; }
-  renderTable();
-}
-
-// ─── Init ───────────────────────────────────────────────────────────────────
-loadContext();
-loadStatus();
-loadResults();
+// ── boot ─────────────────────────────────────────────────────────────────
 connectSSE();
-
-// Poll status every 5s
-setInterval(loadStatus, 5000);
+loadContext();
+pollStatus();
+setInterval(pollStatus, 5000);
+setInterval(() => {
+  if ($('tab-evo').classList.contains('active')) loadEvo();
+  if ($('tab-deals').classList.contains('active')) loadDeals();
+}, 10000);
+window.addEventListener('resize', drawChart);
 </script>
 </body>
 </html>
