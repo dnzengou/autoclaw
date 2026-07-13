@@ -3,9 +3,8 @@
 FROM golang:1.22-alpine3.20 AS go-builder
 WORKDIR /build
 
-COPY agent.go ./
-RUN go mod init github.com/dnzengou/autoclaw && \
-    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
+COPY go.mod agent.go evo.go deals.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # Runtime stage
 FROM alpine:3.20
