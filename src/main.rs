@@ -1,13 +1,9 @@
-use autoclaw::agent::{AgentLoop, AgentConfig};
-use autoclaw::context::ContextEngine;
+use autoclaw::agent::{AgentConfig, AgentLoop};
 use autoclaw::eval::EvalEngine;
-use autoclaw::git::GitOps;
-use autoclaw::metrics::MetricsCollector;
 use autoclaw::server::APIServer;
 use autoclaw::telemetry::Telemetry;
 use clap::Parser;
-use std::sync::Arc;
-use tracing::{info, error};
+use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(name = "autoclaw")]
@@ -53,15 +49,19 @@ enum Commands {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     Telemetry::init()?;
-    
+
     let cli = Cli::parse();
-    
+
     match cli.command {
         Commands::Init { path } => {
             info!("Initializing autoclaw project at {}", path);
             autoclaw::init::create_project(&path).await?;
         }
-        Commands::Run { context, budget_seconds, headless } => {
+        Commands::Run {
+            context,
+            budget_seconds,
+            headless,
+        } => {
             info!("Starting agent loop with {}s budget", budget_seconds);
             let config = AgentConfig {
                 context_path: context,
@@ -75,7 +75,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Eval { run_id } => {
             info!("Evaluating run {}", run_id);
             let eval_engine = EvalEngine::new().await?;
-            eval_engine.evaluate_run(&run_id).await?;
+            let result = eval_engine.evaluate(&run_id).await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Commands::Server { port } => {
             info!("Starting API server on port {}", port);
@@ -87,6 +88,6 @@ async fn main() -> anyhow::Result<()> {
             autoclaw::deploy::deploy(&target).await?;
         }
     }
-    
+
     Ok(())
 }

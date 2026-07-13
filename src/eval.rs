@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalResult {
@@ -66,25 +66,25 @@ pub trait Evaluator {
 impl EvalEngine {
     pub async fn new() -> Result<Self> {
         let rubric = Self::load_default_rubric().await?;
-        
+
         Ok(Self {
             rubric,
             custom_evaluators: HashMap::new(),
         })
     }
-    
+
     pub async fn with_rubric(path: &str) -> Result<Self> {
         let content = fs::read_to_string(path).await?;
         let rubric: EvalRubric = serde_json::from_str(&content)?;
-        
+
         info!("Loaded custom rubric: {} v{}", rubric.name, rubric.version);
-        
+
         Ok(Self {
             rubric,
             custom_evaluators: HashMap::new(),
         })
     }
-    
+
     async fn load_default_rubric() -> Result<EvalRubric> {
         Ok(EvalRubric {
             name: "Autoclaw Default".to_string(),
@@ -110,7 +110,10 @@ impl EvalEngine {
                     id: "memory_efficiency".to_string(),
                     name: "Memory Efficiency".to_string(),
                     description: "GPU memory utilization ratio".to_string(),
-                    metric_type: MetricType::Range { min: 0.7, max: 0.95 },
+                    metric_type: MetricType::Range {
+                        min: 0.7,
+                        max: 0.95,
+                    },
                     target: 0.85,
                     weight: 0.2,
                 },
@@ -128,7 +131,9 @@ impl EvalEngine {
                 ("training_speed".to_string(), 0.2),
                 ("memory_efficiency".to_string(), 0.2),
                 ("code_quality".to_string(), 0.2),
-            ].into_iter().collect(),
+            ]
+            .into_iter()
+            .collect(),
             thresholds: Thresholds {
                 excellent: 0.9,
                 good: 0.75,
@@ -137,18 +142,18 @@ impl EvalEngine {
             },
         })
     }
-    
+
     pub async fn evaluate(&self, run_id: &str) -> Result<EvalResult> {
         let start = std::time::Instant::now();
-        
+
         // Collect metrics
         let metrics = self.collect_metrics(run_id).await?;
-        
+
         // Score each criterion
         let mut rubric_scores = HashMap::new();
         let mut total_score = 0.0;
         let mut total_weight = 0.0;
-        
+
         for criterion in &self.rubric.criteria {
             if let Some(metric_value) = metrics.get(&criterion.id) {
                 let score = self.score_criterion(criterion, *metric_value);
@@ -157,15 +162,15 @@ impl EvalEngine {
                 total_weight += criterion.weight;
             }
         }
-        
+
         let final_score = if total_weight > 0.0 {
             total_score / total_weight
         } else {
             0.0
         };
-        
+
         let passed = final_score >= self.rubric.thresholds.acceptable;
-        
+
         Ok(EvalResult {
             run_id: run_id.to_string(),
             score: final_score,
@@ -176,10 +181,10 @@ impl EvalEngine {
             timestamp: chrono::Utc::now(),
         })
     }
-    
+
     async fn collect_metrics(&self, run_id: &str) -> Result<HashMap<String, f64>> {
         let mut metrics = HashMap::new();
-        
+
         // Read from metrics file if exists
         let metrics_path = format!(".autoclaw/metrics/{}.json", run_id);
         if PathBuf::from(&metrics_path).exists() {
@@ -187,7 +192,7 @@ impl EvalEngine {
             let file_metrics: HashMap<String, f64> = serde_json::from_str(&content)?;
             metrics.extend(file_metrics);
         }
-        
+
         // Run custom evaluators
         for (name, evaluator) in &self.custom_evaluators {
             match evaluator.evaluate(run_id).await {
@@ -199,10 +204,10 @@ impl EvalEngine {
                 }
             }
         }
-        
+
         Ok(metrics)
     }
-    
+
     fn score_criterion(&self, criterion: &EvalCriterion, value: f64) -> f64 {
         match &criterion.metric_type {
             MetricType::LowerIsBetter => {
@@ -239,7 +244,7 @@ impl EvalEngine {
             }
         }
     }
-    
+
     pub fn classify_score(&self, score: f64) -> ScoreClass {
         if score >= self.rubric.thresholds.excellent {
             ScoreClass::Excellent
@@ -251,15 +256,15 @@ impl EvalEngine {
             ScoreClass::Poor
         }
     }
-    
+
     pub fn register_evaluator(&mut self, name: &str, evaluator: Box<dyn Evaluator + Send + Sync>) {
         self.custom_evaluators.insert(name.to_string(), evaluator);
     }
-    
+
     pub fn get_rubric(&self) -> &EvalRubric {
         &self.rubric
     }
-    
+
     pub async fn save_rubric(&self, path: &str) -> Result<()> {
         let content = serde_json::to_string_pretty(&self.rubric)?;
         fs::write(path, content).await?;
@@ -295,7 +300,7 @@ impl Evaluator for ValidationLossEvaluator {
     async fn evaluate(&self, run_id: &str) -> Result<f64> {
         let log_path = format!(".autoclaw/logs/{}.log", run_id);
         let content = fs::read_to_string(&log_path).await?;
-        
+
         // Parse validation loss from log
         for line in content.lines().rev() {
             if line.contains("val_bpb") {
@@ -307,10 +312,10 @@ impl Evaluator for ValidationLossEvaluator {
                 }
             }
         }
-        
+
         anyhow::bail!("Could not find validation loss in log")
     }
-    
+
     fn name(&self) -> &str {
         "validation_loss"
     }
