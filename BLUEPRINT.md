@@ -2,7 +2,7 @@
 
 > Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
 
-**Version:** 0.3.0 · **Date:** 2026-07-17 · **License:** MIT
+**Version:** 0.3.1 · **Date:** 2026-07-17 · **License:** MIT
 
 ## Mission
 
@@ -164,6 +164,33 @@ either does not affect the other; both talk to the same `/api/*` and `/events` s
 - Wired both surfaces to real endpoints (`/api/status`, `/api/results`, `/api/context`, `/events`)
 - Added keyboard shortcuts + SSE pulse + status pills
 
+## Demo — v0.3.1
+
+`autoclaw.dev/demo` (or `dashboard.html?demo=1`) is a **zero-install, zero-server** trial
+of the product. Same UI as the real dashboard; the difference is the data path:
+
+- `?demo=1` short-circuits every `fetch()` call.
+- Hydrates from a 20-experiment seed with a plausible F1 curve (0.72 → ~0.91, 3 reverts).
+- `S` = Start simulates a live SSE stream (one new experiment every ~4 s, budget 300 s).
+- `X` = Stop halts the timer. `R` = Reset returns to the seed.
+- Context editor is writable but local-only.
+- Amber `▶ DEMO MODE` banner links back to Install.
+
+**Why this over a hosted `demo.autoclaw.dev`:**
+- Zero infra to keep running (no VPS, no rate limits, no LLM key drain).
+- Works on airplane, in restricted networks, behind corporate proxies.
+- Deploys as pure static assets alongside the marketing landing.
+- Same asset served at `/demo` (via `vercel.json` rewrite) and `?demo=1`.
+
+**ARM at the funnel top:**
+- Adoption: cuts time-to-first-experience from "install + LLM key + budget" to **~15 s**.
+- Retention: the same UI they'll get post-install → familiarity carries over.
+- Monetization: the CTA back to Install/Pro sits inside the demo, in view during the "aha".
+
+**Follow-ups (not blocking):**
+- Optional hosted `demo.autoclaw.dev` on Fly.io with rate-limited real LLM calls — nice-to-have, not required.
+- Guided-tour overlay (arrows pointing at score sparkline, then experiments table, then context) — punt until we see funnel drop-offs in Plausible.
+
 ## Release flow
 
 1. Bump version in: `Cargo.toml`, `agent.go` (constant), `sdk/python/pyproject.toml`, `sdk/js/package.json`, `mobile/Cargo.toml`, `packaging/*`.
@@ -174,6 +201,11 @@ either does not affect the other; both talk to the same `/api/*` and `/events` s
 3. Manual: `pip publish`, `npm publish`, update Homebrew tap with new SHA256.
 
 ## Changelog
+
+### 0.3.1 — 2026-07-17
+- User demo: `dashboard.html?demo=1` / `autoclaw.dev/demo` — same UI, seeded data + simulated SSE, zero server.
+- Landing hero adds primary `▶ Try the demo` CTA before Install. `cta-hint` copy quantifies time-to-first-experience (~15 s).
+- Vercel rewrite `/demo → /dashboard.html?demo=1`; sitemap entry priority 0.95.
 
 ### 0.3.0 — 2026-07-17
 - Unified visual language across three surfaces (landing, dashboard.html, React shell).
@@ -196,4 +228,4 @@ either does not affect the other; both talk to the same `/api/*` and `/events` s
 
 ---
 
-*Autoclaw v0.3.0 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.3.1 · MIT · Karpathy pattern · Caveman context format*

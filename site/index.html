@@ -223,6 +223,8 @@ footer .links a { margin: 0 10px; }
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--accent); margin-bottom: 12px;
 }
+.cta-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+.cta-hint b { color: var(--accent-2); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -231,6 +233,7 @@ footer .links a { margin: 0 10px; }
   <div class="wrap">
     <a href="/" class="logo"><span class="mark">⟲</span> autoclaw</a>
     <nav>
+      <a href="/demo" class="plausible-event-name=nav_demo">Demo</a>
       <a href="#how">How</a>
       <a href="#install">Install</a>
       <a href="#pricing">Pricing</a>
@@ -251,9 +254,11 @@ footer .links a { margin: 0 10px; }
       Forever.
     </p>
     <div class="cta">
-      <a href="#install" class="btn btn-primary plausible-event-name=cta_install">Install in 30s</a>
+      <a href="/demo" class="btn btn-primary plausible-event-name=cta_demo">▶ Try the demo</a>
+      <a href="#install" class="btn plausible-event-name=cta_install">Install in 30s</a>
       <a href="https://github.com/dnzengou/autoclaw" class="btn plausible-event-name=cta_github" target="_blank" rel="noopener">Source on GitHub</a>
     </div>
+    <p class="cta-hint">No signup · no install · runs entirely in your browser · <b>~15s</b> to first live experiment.</p>
   </div>
 </section>
 
