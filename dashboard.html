@@ -3,425 +3,413 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autoclaw Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<title>Autoclaw · Dashboard</title>
+<meta name="description" content="Self-improving AI experiment loop — live dashboard">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9F%B2%3C/text%3E%3C/svg%3E">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+:root {
+  --bg: #0b0d10;
+  --surface: #14181d;
+  --surface-2: #1a1f26;
+  --border: #232a33;
+  --border-hi: #2f3844;
+  --fg: #eef2f7;
+  --muted: #8a94a3;
+  --accent: #ff7a3d;
+  --accent-2: #ffd166;
+  --ok: #2dd4a8;
+  --warn: #f0b429;
+  --danger: #ef4444;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font: 14px/1.5 var(--font-sans);
+  background: var(--bg); color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+.app { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; }
 
-/* Header */
-.header { background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.header h1 { font-size: 20px; font-weight: 600; color: #f97316; }
-.header h1 span { color: #64748b; font-weight: 400; }
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.controls button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-.btn-start { background: #22c55e; color: #fff; }
-.btn-start:hover { background: #16a34a; }
-.btn-stop { background: #ef4444; color: #fff; }
-.btn-stop:hover { background: #dc2626; }
-.btn-reset { background: #64748b; color: #fff; }
-.btn-reset:hover { background: #475569; }
-.controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* topbar */
+.topbar {
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 24px;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,24,29,0.85), rgba(11,13,16,0.85));
+  backdrop-filter: blur(6px);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; }
+.brand .mark { color: var(--accent); font-size: 18px; }
+.brand .name { font-size: 15px; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pulse.on { background: var(--ok); animation: pulse 1.8s ease-in-out infinite; }
+.pulse.off { background: var(--danger); }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(45,212,168,0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(45,212,168,0); }
+}
+.tabs { display: flex; gap: 4px; justify-self: center; }
+.tabs button {
+  background: transparent; color: var(--muted); border: 1px solid transparent;
+  padding: 6px 12px; border-radius: var(--radius); font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tabs button:hover { color: var(--fg); background: var(--surface); }
+.tabs button.active { color: var(--fg); background: var(--surface); border-color: var(--border); }
+.actions { display: flex; gap: 8px; }
+.btn {
+  background: var(--surface); color: var(--fg); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: var(--radius); font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform 0.06s, background 0.12s, border-color 0.12s;
+}
+.btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-hi); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-accent { background: var(--accent); color: #0b0d10; border-color: var(--accent); font-weight: 600; }
+.btn-accent:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+kbd {
+  font: 11px/1 var(--font-mono);
+  padding: 2px 5px; border-radius: 4px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+}
 
-/* Metric Cards */
-.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 24px; }
-.metric-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
-.metric-card .label { font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
-.metric-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
-.metric-card .value.green { color: #22c55e; }
-.metric-card .value.orange { color: #f97316; }
-.metric-card .value.blue { color: #3b82f6; }
-.metric-card .value.purple { color: #a855f7; }
+/* layout */
+main { padding: 20px; max-width: 1400px; margin: 0 auto; width: 100%; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.span-4 { grid-column: span 4; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+.view { display: none; }
+.view.active { display: block; }
 
-/* Main Layout */
-.main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 24px 24px; }
-@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+/* stat cards */
+.stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.stat-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 600;
+}
+.stat-value {
+  font: 700 26px/1.1 var(--font-mono);
+  margin-top: 6px; color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.stat-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-.panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
-.panel-header { padding: 12px 16px; border-bottom: 1px solid #334155; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
-.panel-body { padding: 16px; }
+/* panel */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+}
+.panel-head {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+.muted { color: var(--muted); text-transform: none; letter-spacing: normal; font-weight: 400; }
 
-/* Chart */
-.chart-container { position: relative; height: 250px; }
+/* sparkline */
+#spark { display: block; width: 100%; height: 120px; padding: 14px; }
+.spark-empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
 
-/* Experiment Table */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #334155; color: #94a3b8; font-weight: 500; cursor: pointer; user-select: none; }
-th:hover { color: #e2e8f0; }
-td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
-tr:hover td { background: #1a2332; }
+/* table */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted);
+  padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.tbl td { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl tr:hover td { background: var(--surface-2); }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl .mono { font-family: var(--font-mono); font-size: 12px; }
+.tbl .hypo {
+  max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg);
+}
+.empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
 
-.status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.status-completed { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; }
-.status-running { background: #f9731620; color: #f97316; border: 1px solid #f9731640; animation: pulse 1.5s infinite; }
-.status-failed { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
-.status-reverted { background: #64748b20; color: #64748b; border: 1px solid #64748b40; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+/* status pills */
+.pill {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font: 500 11px/1.6 var(--font-mono); text-transform: lowercase; border: 1px solid transparent;
+}
+.pill-completed { background: rgba(45,212,168,0.12); color: var(--ok); border-color: rgba(45,212,168,0.28); }
+.pill-reverted  { background: rgba(240,180,41,0.12); color: var(--warn); border-color: rgba(240,180,41,0.28); }
+.pill-failed    { background: rgba(239,68,68,0.12); color: var(--danger); border-color: rgba(239,68,68,0.28); }
 
-/* Context Editor */
-.context-editor { width: 100%; min-height: 300px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; padding: 12px; resize: vertical; line-height: 1.5; }
-.context-editor:focus { outline: none; border-color: #f97316; }
-.editor-actions { display: flex; gap: 8px; margin-top: 8px; }
-.editor-actions button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; }
-.btn-save { background: #f97316; color: #fff; }
-.btn-save:hover { background: #ea580c; }
+/* context editor */
+#context-editor {
+  width: 100%; min-height: 420px;
+  background: var(--bg); color: var(--fg);
+  border: 0; padding: 16px;
+  font: 13px/1.6 var(--font-mono);
+  resize: vertical; border-top: 1px solid var(--border);
+}
+#context-editor:focus { outline: none; box-shadow: inset 0 0 0 2px rgba(255,122,61,0.35); }
+.ctx-actions {
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  border-top: 1px solid var(--border); background: var(--surface-2);
+}
 
-/* Live Feed */
-.feed { max-height: 300px; overflow-y: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; }
-.feed-entry { padding: 6px 0; border-bottom: 1px solid #1e293b; display: flex; gap: 8px; }
-.feed-time { color: #64748b; white-space: nowrap; }
-.feed-id { color: #f97316; font-weight: 500; }
-.feed-score { color: #22c55e; }
-.feed-score.bad { color: #ef4444; }
-.feed-hypo { color: #94a3b8; }
-
-/* Status indicator */
-.status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.status-dot.idle { background: #64748b; }
-.status-dot.running { background: #22c55e; animation: pulse 1.5s infinite; }
-.status-dot.stopped { background: #ef4444; }
-
-/* Empty state */
-.empty-state { text-align: center; padding: 40px; color: #64748b; }
-.empty-state p { margin-top: 8px; font-size: 14px; }
+/* footer */
+.footer {
+  padding: 10px 20px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); text-align: center;
+}
+.footer kbd { margin: 0 2px; }
 </style>
 </head>
 <body>
+<div class="app">
 
-<div class="header">
-  <div>
-    <h1>🦞 Autoclaw <span>Experiment Dashboard</span></h1>
-    <div class="status-indicator" id="statusIndicator">
-      <span class="status-dot idle" id="statusDot"></span>
-      <span id="statusText">Idle</span>
-    </div>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">⟲</span>
+    <span class="name">autoclaw</span>
+    <span id="pulse" class="pulse off" title="disconnected"></span>
   </div>
-  <div class="controls">
-    <button class="btn-start" id="btnStart" onclick="startLoop()">▶ Start</button>
-    <button class="btn-stop" id="btnStop" onclick="stopLoop()" disabled>■ Stop</button>
-    <button class="btn-reset" id="btnReset" onclick="resetLoop()">↺ Reset</button>
+  <nav class="tabs" role="tablist">
+    <button data-tab="live" class="active"><kbd>1</kbd>Live</button>
+    <button data-tab="history"><kbd>2</kbd>History</button>
+    <button data-tab="context"><kbd>3</kbd>Context</button>
+  </nav>
+  <div class="actions">
+    <button id="btn-start" class="btn"><kbd>S</kbd>Start</button>
+    <button id="btn-stop" class="btn"><kbd>X</kbd>Stop</button>
   </div>
-</div>
+</header>
 
-<div class="metrics" id="metrics">
-  <div class="metric-card">
-    <div class="label">Experiments</div>
-    <div class="value blue" id="totalExps">0</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Best Score</div>
-    <div class="value green" id="bestScore">—</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Budget Left</div>
-    <div class="value orange" id="budgetLeft">—</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Uptime</div>
-    <div class="value purple" id="uptime">0s</div>
-  </div>
-</div>
+<main>
+  <section id="view-live" class="view active">
+    <div class="grid">
+      <div class="stat"><div class="stat-label">Experiments</div><div id="stat-total" class="stat-value">0</div></div>
+      <div class="stat"><div class="stat-label">Best score</div><div id="stat-best" class="stat-value">—</div><div id="stat-best-id" class="stat-hint"></div></div>
+      <div class="stat"><div class="stat-label">Budget left</div><div id="stat-budget" class="stat-value">—</div><div id="stat-mode" class="stat-hint">idle</div></div>
+      <div class="stat"><div class="stat-label">Uptime</div><div id="stat-uptime" class="stat-value">—</div></div>
 
-<div class="main">
-  <div class="panel">
-    <div class="panel-header">Score Progression</div>
-    <div class="panel-body">
-      <div class="chart-container">
-        <canvas id="scoreChart"></canvas>
+      <div class="panel span-4">
+        <div class="panel-head">Score history <span id="spark-count" class="muted">· 0 runs</span></div>
+        <svg id="spark" viewBox="0 0 640 120" preserveAspectRatio="none" aria-label="Score history"></svg>
+      </div>
+
+      <div class="panel span-4">
+        <div class="panel-head">Recent experiments</div>
+        <div id="recent-table"></div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="panel">
-    <div class="panel-header">Live Feed</div>
-    <div class="panel-body feed" id="feed">
-      <div class="empty-state">
-        <div style="font-size: 32px;">⏳</div>
-        <p>Waiting for experiments...</p>
+  <section id="view-history" class="view">
+    <div class="panel">
+      <div class="panel-head">All experiments <span id="history-count" class="muted">· 0 total</span></div>
+      <div id="history-table"></div>
+    </div>
+  </section>
+
+  <section id="view-context" class="view">
+    <div class="panel">
+      <div class="panel-head">context.md <span class="muted">· your goals</span></div>
+      <textarea id="context-editor" spellcheck="false" aria-label="Context editor"></textarea>
+      <div class="ctx-actions">
+        <button id="btn-save" class="btn btn-accent">Save</button>
+        <span class="muted">Tip: edit here, then <kbd>S</kbd> to start a new loop.</span>
       </div>
     </div>
-  </div>
+  </section>
+</main>
 
-  <div class="panel" style="grid-column: 1 / -1;">
-    <div class="panel-header">Experiment History</div>
-    <div class="panel-body">
-      <div class="table-wrap">
-        <table id="expTable">
-          <thead>
-            <tr>
-              <th onclick="sortTable('id')">ID ↕</th>
-              <th onclick="sortTable('hypothesis')">Hypothesis ↕</th>
-              <th onclick="sortTable('score')">Score ↕</th>
-              <th onclick="sortTable('status')">Status ↕</th>
-              <th onclick="sortTable('timestamp')">Time ↕</th>
-              <th>Git Hash</th>
-            </tr>
-          </thead>
-          <tbody id="expBody">
-            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+<footer class="footer">
+  <span>
+    <span id="footer-state">○ idle</span> · <span id="footer-conn">SSE offline</span> ·
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs · <kbd>S</kbd> start · <kbd>X</kbd> stop · <kbd>R</kbd> reset
+  </span>
+</footer>
 
-  <div class="panel" style="grid-column: 1 / -1;">
-    <div class="panel-header">Context Editor</div>
-    <div class="panel-body">
-      <textarea class="context-editor" id="contextEditor" placeholder="Loading context..."></textarea>
-      <div class="editor-actions">
-        <button class="btn-save" onclick="saveContext()">💾 Save Context</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
-// ─── State ──────────────────────────────────────────────────────────────────
-let experiments = [];
-let sortField = null;
-let sortAsc = true;
-let scoreChart = null;
+// Runtime API base — matches window global set by Tauri or defaults to same-origin.
+const API = window.AUTOCLAW_URL || "";
 
-// ─── SSE Connection ─────────────────────────────────────────────────────────
+const state = { status: null, experiments: [], context: "" };
+
+async function refreshStatus() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    state.status = await r.json();
+    renderStats();
+  } catch {}
+}
+async function refreshResults() {
+  try {
+    const r = await fetch(`${API}/api/results`);
+    state.experiments = await r.json();
+    renderAll();
+  } catch {}
+}
+async function refreshContext() {
+  try {
+    const r = await fetch(`${API}/api/context`);
+    state.context = await r.text();
+    document.getElementById("context-editor").value = state.context;
+  } catch {}
+}
+
+// SSE stream
+let es = null;
 function connectSSE() {
-  const evtSource = new EventSource('/events');
-  evtSource.onmessage = function(e) {
+  if (es) es.close();
+  es = new EventSource(`${API}/events`);
+  es.onopen = () => setConnected(true);
+  es.onerror = () => setConnected(false);
+  es.onmessage = (ev) => {
     try {
-      const data = JSON.parse(e.data);
-      if (data.type === 'done') {
-        updateStatus({ running: false });
-        return;
-      }
-      if (data.id) {
-        // Update or add experiment
-        const idx = experiments.findIndex(x => x.id === data.id);
-        if (idx >= 0) experiments[idx] = data;
-        else experiments.push(data);
+      const data = JSON.parse(ev.data);
+      if (data.id && typeof data.score === "number") {
+        // upsert experiment
+        const idx = state.experiments.findIndex(e => e.id === data.id);
+        if (idx >= 0) state.experiments[idx] = data;
+        else state.experiments.push(data);
         renderAll();
       }
-    } catch(err) {
-      console.error('SSE parse error:', err);
-    }
-  };
-  evtSource.onerror = function() {
-    console.log('SSE disconnected, reconnecting...');
+    } catch {}
   };
 }
-
-// ─── API Calls ──────────────────────────────────────────────────────────────
-
-async function startLoop() {
-  document.getElementById('btnStart').disabled = true;
-  await fetch('/api/start', { method: 'POST' });
-  updateStatus({ running: true });
+function setConnected(on) {
+  const p = document.getElementById("pulse");
+  p.className = "pulse " + (on ? "on" : "off");
+  p.title = on ? "connected" : "disconnected";
+  document.getElementById("footer-conn").textContent = on ? "SSE connected" : "SSE offline";
 }
 
-async function stopLoop() {
-  await fetch('/api/stop', { method: 'POST' });
-  updateStatus({ running: false });
+// Rendering
+function renderStats() {
+  const s = state.status;
+  const es = state.experiments;
+  document.getElementById("stat-total").textContent = es.length;
+
+  const best = es.reduce((a, b) => (b.score > (a?.score ?? -Infinity) ? b : a), es[0]);
+  document.getElementById("stat-best").textContent = best ? best.score.toFixed(4) : "—";
+  document.getElementById("stat-best-id").textContent = best ? best.id : "";
+
+  document.getElementById("stat-budget").textContent = s ? `${s.budget_remaining.toFixed(0)}s` : "—";
+  const running = s?.running ?? false;
+  document.getElementById("stat-mode").textContent = running ? "running" : "idle";
+  document.getElementById("stat-uptime").textContent = s ? fmtDur(s.uptime) : "—";
+
+  document.getElementById("footer-state").textContent = running ? "● running" : "○ idle";
+  document.getElementById("btn-start").disabled = running;
+  document.getElementById("btn-stop").disabled = !running;
 }
 
-async function resetLoop() {
-  if (!confirm('Reset all experiment data?')) return;
-  await fetch('/api/reset', { method: 'POST' });
-  experiments = [];
-  renderAll();
-  updateStatus({ running: false, total_experiments: 0, best_score: 0, budget_remaining: 0 });
-}
-
-async function saveContext() {
-  const content = document.getElementById('contextEditor').value;
-  await fetch('/api/context', {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: content
-  });
-}
-
-async function loadContext() {
-  try {
-    const resp = await fetch('/api/context');
-    const text = await resp.text();
-    document.getElementById('contextEditor').value = text;
-  } catch(e) {
-    document.getElementById('contextEditor').placeholder = 'Failed to load context';
+function renderSpark() {
+  const scores = state.experiments.map(e => e.score);
+  const spark = document.getElementById("spark");
+  document.getElementById("spark-count").textContent = `· ${scores.length} runs`;
+  if (scores.length < 2) {
+    spark.innerHTML = "";
+    spark.insertAdjacentHTML("beforebegin", "");
+    return;
   }
+  const w = 640, h = 120, pad = 6;
+  const max = Math.max(...scores), min = Math.min(...scores), span = max - min || 1;
+  const step = (w - pad * 2) / (scores.length - 1);
+  const pts = scores.map((s, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((s - min) / span) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const lastX = pad + (scores.length - 1) * step;
+  const lastY = h - pad - ((scores.at(-1) - min) / span) * (h - pad * 2);
+  spark.innerHTML =
+    `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--accent-2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<circle cx="${lastX}" cy="${lastY}" r="4" fill="var(--accent-2)"/>`;
 }
 
-async function loadStatus() {
-  try {
-    const resp = await fetch('/api/status');
-    const data = await resp.json();
-    updateStatus(data);
-  } catch(e) {}
+function renderTable(el, rows) {
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty">No experiments yet. Set your context, then <kbd>S</kbd>tart.</div>`;
+    return;
+  }
+  const body = rows.map(e => `
+    <tr>
+      <td class="mono">${escapeHTML(e.id)}</td>
+      <td class="hypo">${escapeHTML(e.hypothesis)}</td>
+      <td class="num mono">${e.score.toFixed(4)}</td>
+      <td><span class="pill pill-${escapeAttr(e.status)}">${escapeHTML(e.status)}</span></td>
+      <td class="num mono muted">${e.duration_seconds.toFixed(1)}s</td>
+      <td class="mono muted">${escapeHTML((e.git_hash || "").slice(0, 7)) || "—"}</td>
+    </tr>`).join("");
+  el.innerHTML = `<table class="tbl">
+    <thead><tr><th>ID</th><th>Hypothesis</th><th class="num">Score</th><th>Status</th><th class="num">Dur</th><th>Git</th></tr></thead>
+    <tbody>${body}</tbody></table>`;
 }
-
-async function loadResults() {
-  try {
-    const resp = await fetch('/api/results');
-    experiments = await resp.json();
-    renderAll();
-  } catch(e) {}
-}
-
-// ─── Render ─────────────────────────────────────────────────────────────────
 
 function renderAll() {
-  renderMetrics();
-  renderChart();
-  renderTable();
-  renderFeed();
+  renderStats();
+  renderSpark();
+  const recent = state.experiments.slice(-8).reverse();
+  renderTable(document.getElementById("recent-table"), recent);
+  renderTable(document.getElementById("history-table"), [...state.experiments].reverse());
+  document.getElementById("history-count").textContent = `· ${state.experiments.length} total`;
 }
 
-function renderMetrics() {
-  document.getElementById('totalExps').textContent = experiments.length;
-  const best = experiments.length > 0 ? Math.max(...experiments.map(e => e.score || 0)) : 0;
-  document.getElementById('bestScore').textContent = experiments.length > 0 ? best.toFixed(4) : '—';
+function fmtDur(s) {
+  if (s < 60) return `${s.toFixed(0)}s`;
+  if (s < 3600) return `${(s / 60).toFixed(1)}m`;
+  return `${(s / 3600).toFixed(1)}h`;
+}
+function escapeHTML(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escapeAttr(s) { return String(s).replace(/[^a-z0-9_-]/gi, ""); }
 
-  const last = experiments[experiments.length - 1];
-  const budget = last && last.budget_remaining !== undefined ? last.budget_remaining : 0;
-  document.getElementById('budgetLeft').textContent = budget > 0 ? budget.toFixed(0) + 's' : '—';
+// Interactions
+async function post(path) {
+  await fetch(`${API}${path}`, { method: "POST" });
+  refreshStatus();
+}
+document.getElementById("btn-start").onclick = () => post("/api/start");
+document.getElementById("btn-stop").onclick = () => post("/api/stop");
+document.getElementById("btn-save").onclick = async () => {
+  const body = document.getElementById("context-editor").value;
+  await fetch(`${API}/api/context`, { method: "POST", body });
+};
+
+// Tabs
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.onclick = () => switchTab(btn.dataset.tab);
+});
+function switchTab(name) {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${name}`));
 }
 
-function renderChart() {
-  if (!scoreChart) {
-    const ctx = document.getElementById('scoreChart').getContext('2d');
-    scoreChart = new Chart(ctx, {
-      type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'Score',
-        data: [],
-        borderColor: '#f97316',
-        backgroundColor: '#f9731620',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
-        pointBackgroundColor: '#f97316'
-      }]},
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
-          y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' }, beginAtZero: true }
-        }
-      }
-    });
-  }
+// Keyboard shortcuts
+window.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+  if (e.key === "s") post("/api/start");
+  else if (e.key === "x") post("/api/stop");
+  else if (e.key === "r") { if (confirm("Reset all state?")) post("/api/reset"); }
+  else if (e.key === "1") switchTab("live");
+  else if (e.key === "2") switchTab("history");
+  else if (e.key === "3") switchTab("context");
+});
 
-  const labels = experiments.map(e => e.id);
-  const data = experiments.map(e => e.score || 0);
-  scoreChart.data.labels = labels;
-  scoreChart.data.datasets[0].data = data;
-  scoreChart.update('none');
-}
-
-function renderTable() {
-  const tbody = document.getElementById('expBody');
-  if (experiments.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px;">No experiments yet</td></tr>';
-    return;
-  }
-
-  let sorted = [...experiments];
-  if (sortField) {
-    sorted.sort((a, b) => {
-      let va = a[sortField] || '';
-      let vb = b[sortField] || '';
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va < vb) return sortAsc ? -1 : 1;
-      if (va > vb) return sortAsc ? 1 : -1;
-      return 0;
-    });
-  }
-
-  tbody.innerHTML = sorted.map(e => {
-    const statusClass = 'status-' + (e.status || 'unknown');
-    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
-    return `<tr>
-      <td><strong>${e.id}</strong></td>
-      <td>${(e.hypothesis || '?').substring(0, 60)}</td>
-      <td style="color:${(e.score||0) > 0.5 ? '#22c55e' : '#ef4444'}">${(e.score || 0).toFixed(4)}</td>
-      <td><span class="status-badge ${statusClass}">${e.status || '?'}</span></td>
-      <td>${time}</td>
-      <td style="font-family:monospace;font-size:11px;color:#64748b">${(e.git_hash || '').substring(0, 7)}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderFeed() {
-  const feed = document.getElementById('feed');
-  if (experiments.length === 0) {
-    feed.innerHTML = '<div class="empty-state"><div style="font-size:32px;">⏳</div><p>Waiting for experiments...</p></div>';
-    return;
-  }
-
-  const recent = experiments.slice(-20).reverse();
-  feed.innerHTML = recent.map(e => {
-    const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '—';
-    const scoreClass = (e.score || 0) > 0.5 ? 'feed-score' : 'feed-score bad';
-    return `<div class="feed-entry">
-      <span class="feed-time">${time}</span>
-      <span class="feed-id">${e.id}</span>
-      <span class="${scoreClass}">${(e.score || 0).toFixed(4)}</span>
-      <span class="feed-hypo">${(e.hypothesis || '').substring(0, 50)}</span>
-    </div>`;
-  }).join('');
-
-  feed.scrollTop = 0;
-}
-
-function updateStatus(data) {
-  const dot = document.getElementById('statusDot');
-  const text = document.getElementById('statusText');
-  const btnStart = document.getElementById('btnStart');
-  const btnStop = document.getElementById('btnStop');
-
-  if (data.running) {
-    dot.className = 'status-dot running';
-    text.textContent = 'Running';
-    btnStart.disabled = true;
-    btnStop.disabled = false;
-  } else {
-    dot.className = 'status-dot idle';
-    text.textContent = 'Idle';
-    btnStart.disabled = false;
-    btnStop.disabled = true;
-  }
-
-  if (data.total_experiments !== undefined) {
-    document.getElementById('totalExps').textContent = data.total_experiments;
-  }
-  if (data.best_score !== undefined) {
-    document.getElementById('bestScore').textContent = data.best_score.toFixed(4);
-  }
-  if (data.budget_remaining !== undefined) {
-    document.getElementById('budgetLeft').textContent = data.budget_remaining.toFixed(0) + 's';
-  }
-  if (data.uptime !== undefined) {
-    document.getElementById('uptime').textContent = data.uptime.toFixed(0) + 's';
-  }
-}
-
-function sortTable(field) {
-  if (sortField === field) sortAsc = !sortAsc;
-  else { sortField = field; sortAsc = true; }
-  renderTable();
-}
-
-// ─── Init ───────────────────────────────────────────────────────────────────
-loadContext();
-loadStatus();
-loadResults();
+// Boot
+refreshStatus();
+refreshResults();
+refreshContext();
 connectSSE();
-
-// Poll status every 5s
-setInterval(loadStatus, 5000);
+setInterval(refreshStatus, 3000);
 </script>
 </body>
 </html>

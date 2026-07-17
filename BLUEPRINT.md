@@ -2,7 +2,7 @@
 
 > Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
 
-**Version:** 0.1.0 · **Date:** 2026-06-15 · **License:** MIT
+**Version:** 0.3.0 · **Date:** 2026-07-17 · **License:** MIT
 
 ## Mission
 
@@ -87,6 +87,83 @@ autoclaw/
 | Distributed training | 🔲 |
 | Community leaderboard | 🔲 |
 
+## Design system — v0.3
+
+One visual language across three surfaces: the landing (`site/index.html`), the standalone
+dashboard served by the Go / Rust / Python variants (`dashboard.html`), and the React shell
+that Tauri bundles for mobile (`ui/`). Same tokens, same components — replace any and the
+other two update by convention.
+
+### Tokens
+
+```
+--bg           #0b0d10      surface base           --font-sans   ui-sans-serif …
+--surface      #14181d      panel                  --font-mono   ui-monospace …
+--surface-2    #1a1f26      panel-inside / hover   --radius      8px
+--border       #232a33      thin dividers          --shadow-panel  inset highlight
+--border-hi    #2f3844      hover state
+--fg           #eef2f7      text
+--muted        #8a94a3      secondary text
+--accent       #ff7a3d      brand orange · CTAs
+--accent-2     #ffd166      brand gold  · score line, best-run marker
+--ok           #2dd4a8      status: completed
+--warn         #f0b429      status: reverted
+--danger       #ef4444      status: failed / disconnected
+```
+
+Palette validated via dataviz `scripts/validate_palette.js` — one hue for the score
+sparkline (single series → no legend, panel title names it), semantic status colors
+paired with text labels for CVD safety.
+
+### Principles
+
+1. **Less chrome, more data.** No card shadows, no gradients on data. One 1 px border,
+   flat backgrounds, monospace numerals, tabular-nums for alignment.
+2. **Live is a state, not a page.** SSE pulse in the topbar; the Live tab keeps the
+   headline stats + sparkline visible while experiments stream in.
+3. **Keyboard-first.** `1` `2` `3` switch tabs · `S` start · `X` stop · `R` reset.
+   Every button shows its `<kbd>` hint inline.
+4. **One tab per task.** Live (what's happening now) · History (all runs) · Context (goals).
+   No submenu, no drawer, no modal.
+5. **No client-side chart lib.** Score history is a 20-line inline SVG polyline. Zero
+   dependency, zero flash-of-empty-chart, ~1 KB minified in the HTML page.
+6. **Design belongs in CSS variables, never inline.** One theme file per surface,
+   both surfaces read the same 8-value palette.
+
+### Competitor benchmarks
+
+| Product | What we borrowed |
+|---|---|
+| Linear | Topbar density, `<kbd>` hints inline with buttons, mono numerals |
+| Vercel | Panel-with-uppercase-label header, hover-row tables, subtle backdrop-blur topbar |
+| Aim (aimstack) | Single-hue sparkline for score history; no per-point labels |
+| Cursor | Pulse dot for live-connection state |
+| Weights & Biases | Comparison table with fixed column order (ID · hypothesis · score · status · dur · git) |
+
+Explicitly NOT borrowed: colored bar charts per metric (Neptune), theme picker
+(Comet), sidebar navigation (MLflow) — none earn their pixels for this tool's job.
+
+### Surfaces
+
+| File | Purpose | Build |
+|---|---|---|
+| `site/index.html` | Marketing landing at `autoclaw.dev` | Static, deploy via `vercel --prod site/` |
+| `dashboard.html` | Server-fallback dashboard (all runtimes serve it) | None — single file |
+| `ui/src/App.tsx` + `App.css` | React shell for the Tauri mobile app | `cd ui && npm run build` |
+
+The React shell and `dashboard.html` render the same UI from the same tokens. Deleting
+either does not affect the other; both talk to the same `/api/*` and `/events` surface.
+
+### Trim log — v0.3 (2026-07-17)
+
+- Deleted `ui/src/components/{Chart,ContextEditor,ExperimentList,MetricsCard}.{tsx,css}` (8 files)
+- Deleted `ui/src/hooks/useWebSocket.ts` (endpoint was wrong — server exposes SSE not WS)
+- Removed npm deps: `lucide-react`, `recharts`, `ws`, `react-router-dom`
+- Replaced Chart.js CDN (dashboard.html) with inline SVG sparkline
+- Consolidated: React UI went from 1314 lines / 10 files → 435 lines / 3 files
+- Wired both surfaces to real endpoints (`/api/status`, `/api/results`, `/api/context`, `/events`)
+- Added keyboard shortcuts + SSE pulse + status pills
+
 ## Release flow
 
 1. Bump version in: `Cargo.toml`, `agent.go` (constant), `sdk/python/pyproject.toml`, `sdk/js/package.json`, `mobile/Cargo.toml`, `packaging/*`.
@@ -98,6 +175,19 @@ autoclaw/
 
 ## Changelog
 
+### 0.3.0 — 2026-07-17
+- Unified visual language across three surfaces (landing, dashboard.html, React shell).
+- Design tokens documented; palette validated for CVD safety and contrast.
+- React UI: 1314 lines / 10 files → 435 lines / 3 files. Deleted 4 component pairs + hook, dropped 4 npm deps.
+- Fixed broken endpoints in React shell: `/api/experiments` → `/api/results`, WS `/ws` → SSE `/events`.
+- Standalone `dashboard.html` rewritten to match tokens; replaced Chart.js CDN with inline SVG sparkline.
+- Keyboard shortcuts (`1`/`2`/`3` tabs, `S`/`X`/`R` control) + SSE pulse + status pills.
+
+### 0.2.0 — 2026-06-18
+- CI honesty (no `continue-on-error` as a strategy), post-release manifest automation,
+  security defaults (Dependabot × 9 ecosystems, CodeQL, SECURITY.md), SDK smoke tests,
+  container hardening (Go-based image, non-root, tini, alpine), Tauri app icons.
+
 ### 0.1.0 — 2026-06-15
 - Initial multi-channel distribution: Python SDK, JS SDK, Go SDK, Android APK, Homebrew, Scoop, .deb, GHCR.
 - Cross-platform binary CI (Rust + Go × Linux/macOS/Windows × amd64/arm64).
@@ -106,4 +196,4 @@ autoclaw/
 
 ---
 
-*Autoclaw v0.1.0 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.3.0 · MIT · Karpathy pattern · Caveman context format*
