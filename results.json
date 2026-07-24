@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "exp-001",
+    "hypothesis": "baseline",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8398,
+      "accuracy": 0.8552,
+      "inference_time_ms": 2.13,
+      "training_duration_s": 13.7
+    },
+    "score": 0.8376,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:38:22.334616+00:00",
+    "git_hash": "07d3404",
+    "duration_seconds": 5.1,
+    "budget_remaining": 14.7
+  }
+]
