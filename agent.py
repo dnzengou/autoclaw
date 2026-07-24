@@ -631,7 +631,7 @@ Generate {args.hypotheses} hypotheses now:"""
                 if not _should_refine(current, best_score, budget_remaining, args):
                     break
                 if prev_score is not None and abs(current["score"] - prev_score) < args.plateau_tolerance:
-                    print(f"[agent] {current['id']}: score plateaued (Δ<{args.plateau_tolerance}), ending chain")
+                    print(f"[agent] {current['id']}: score plateaued (delta<{args.plateau_tolerance}), ending chain")
                     break
                 prev_score = current["score"]
 
@@ -866,7 +866,7 @@ def main():
     parser.add_argument("--max-refinement-depth", type=int, default=3,
                        help="Max depth of the refinement chain per hypothesis (0 disables)")
     parser.add_argument("--plateau-tolerance", type=float, default=0.005,
-                       help="Stop a refinement chain when |Δscore| falls below this")
+                       help="Stop a refinement chain when |delta score| falls below this")
     parser.add_argument("--target-score", type=float, default=1.0,
                        help="Stop a refinement chain once this score is reached")
     parser.add_argument("--refinement-gap", type=float, default=0.03,
