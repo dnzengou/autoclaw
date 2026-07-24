@@ -2,7 +2,7 @@
 
 > Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
 
-**Version:** 0.3.1 · **Date:** 2026-07-17 · **License:** MIT
+**Version:** 0.4.0 · **Date:** 2026-07-24 · **License:** MIT
 
 ## Mission
 
@@ -191,6 +191,63 @@ of the product. Same UI as the real dashboard; the difference is the data path:
 - Optional hosted `demo.autoclaw.dev` on Fly.io with rate-limited real LLM calls — nice-to-have, not required.
 - Guided-tour overlay (arrows pointing at score sparkline, then experiments table, then context) — punt until we see funnel drop-offs in Plausible.
 
+## Iterative refinement loop — v0.4 (Python prototype)
+
+Before v0.4 the loop was flat — each iteration asked the LLM for N *new* hypotheses,
+ran each one *once*, and moved on. A promising-but-imperfect hypothesis never got a
+second pass; a near-miss was thrown out instead of nudged.
+
+v0.4 adds an AlphaGo / MCTS-style **Run → Evaluate → Improve → Run again** chain around
+`run_experiment()`. After each fresh hypothesis runs, the agent decides whether to
+*refine* that branch (change 1–2 params, keep the rest) or move on to a new one.
+
+### The selective policy
+
+Refine only when the branch is worth expanding:
+
+- Skip if `status == failed` (crashed — refinement is premature).
+- Skip if `status == reverted` (git rolled back — parent params no longer on disk).
+- Skip if `score < best_score - refinement_gap` (dead branch — burn budget elsewhere).
+- Skip if `budget_remaining <= min_refinement_budget` (no time for another train).
+- Otherwise refine, up to `max_refinement_depth` times per branch.
+
+Inside a chain, stop early on: target reached, score plateau, or LLM decline.
+
+### The critique-and-refine prompt
+
+The LLM sees the parent's hypothesis, params, metrics, and score, plus the rubric.
+It returns exactly:
+
+```json
+{"critique": "...", "refinement_strategy": "...", "params": { ... }}
+```
+
+Written back into `results.json` alongside the standard fields, so lineage is
+inspectable end-to-end. A heuristic fallback perturbs the highest-magnitude numeric
+param by ±20% when no LLM key is set — enough to smoke-test the wiring.
+
+### New CLI flags
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--max-refinement-depth` | `3` | Cap the chain per branch (0 disables) |
+| `--plateau-tolerance` | `0.005` | Stop when \|Δscore\| < this |
+| `--target-score` | `1.0` | Stop chain once reached |
+| `--refinement-gap` | `0.03` | Only refine if `score >= best_score - gap` |
+| `--min-refinement-budget` | `5.0` | Seconds below which refinement is skipped |
+| `--refinement-model` | — | Optional cheaper model just for critique |
+
+### New optional result fields (elided when null/zero)
+
+- `parent_id: str` — ID of the experiment being refined
+- `refinement_depth: int` — 0 for fresh, 1..N for refinements
+- `critique: str` — LLM's read on why the parent scored what it did
+- `refinement_strategy: str` — one-line rationale for the change
+
+Dashboard is unaffected — unknown properties are ignored by the SSE handler.
+Lineage rendering (indent + hover critique) is deferred until the pattern
+proves itself. Go and Rust ports follow after Python validation.
+
 ## Release flow
 
 1. Bump version in: `Cargo.toml`, `agent.go` (constant), `sdk/python/pyproject.toml`, `sdk/js/package.json`, `mobile/Cargo.toml`, `packaging/*`.
@@ -201,6 +258,18 @@ of the product. Same UI as the real dashboard; the difference is the data path:
 3. Manual: `pip publish`, `npm publish`, update Homebrew tap with new SHA256.
 
 ## Changelog
+
+### 0.4.0 — 2026-07-24
+- Iterative refinement loop (Python prototype in `agent.py`): after each fresh hypothesis,
+  the agent selectively refines promising branches — AlphaGo / MCTS-style expansion
+  instead of pure breadth-first random search.
+- New `refine_experiment()` + policy gate `_should_refine()` + heuristic fallback for
+  no-LLM smoke testing.
+- Results grow four optional lineage fields (`parent_id`, `refinement_depth`, `critique`,
+  `refinement_strategy`) — all `omitempty`-style so existing consumers stay unchanged.
+- New CLI flags: `--max-refinement-depth`, `--plateau-tolerance`, `--target-score`,
+  `--refinement-gap`, `--min-refinement-budget`, `--refinement-model`.
+- Go + Rust ports of the pattern deferred to a follow-up.
 
 ### 0.3.1 — 2026-07-17
 - User demo: `dashboard.html?demo=1` / `autoclaw.dev/demo` — same UI, seeded data + simulated SSE, zero server.
@@ -228,4 +297,4 @@ of the product. Same UI as the real dashboard; the difference is the data path:
 
 ---
 
-*Autoclaw v0.3.1 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.4.0 · MIT · Karpathy pattern · Caveman context format*

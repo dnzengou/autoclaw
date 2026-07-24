@@ -26,3 +26,12 @@ Improve the F1 score of a text classifier on a sentiment analysis benchmark. Cur
 - Experiment 2: Added dropout 0.2 → F1=0.81 (slightly worse)
 - Experiment 3: Increased epochs to 5 → F1=0.83 (small improvement)
 - The baseline optimizer seems reasonable, try data augmentation next
+
+## Iterative refinement (v0.4)
+The agent now runs an AlphaGo-style Run → Evaluate → Improve → Run again chain after
+each fresh hypothesis. Promising branches (score within `--refinement-gap` of the current
+best) get one or more targeted refinements — the LLM sees the parent's params + metrics
+and proposes a 1–2 param change with a written critique. Chains stop on target reached,
+score plateau, or when the branch falls below the refinement gap. Depth is capped by
+`--max-refinement-depth` (default 3). When responding to refinement prompts, keep the
+critique to one sentence and change the smallest set of params needed to test the hypothesis.

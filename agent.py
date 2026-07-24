@@ -68,7 +68,9 @@ def call_llm(prompt, model="claude-3-opus"):
     elif api_key and os.environ.get("OPENAI_API_KEY"):
         return _call_openai(prompt, model)
     else:
-        return _fallback_hypotheses()
+        # Fallback always returns a JSON string so downstream parsers
+        # can treat call_llm() as text uniformly.
+        return json.dumps(_fallback_hypotheses())
 
 
 def _call_claude(prompt, model):
@@ -99,7 +101,7 @@ def _call_claude(prompt, model):
             return body["content"][0]["text"]
     except Exception as e:
         print(f"[agent] Claude API error: {e}", file=sys.stderr)
-        return _fallback_hypotheses()
+        return json.dumps(_fallback_hypotheses())
 
 
 def _call_openai(prompt, model):
@@ -129,7 +131,7 @@ def _call_openai(prompt, model):
             return body["choices"][0]["message"]["content"]
     except Exception as e:
         print(f"[agent] OpenAI API error: {e}", file=sys.stderr)
-        return _fallback_hypotheses()
+        return json.dumps(_fallback_hypotheses())
 
 
 def _fallback_hypotheses():
@@ -264,8 +266,16 @@ def git_hash():
 
 # ─── Experiment Runner ───────────────────────────────────────────────────────
 
-def run_experiment(hypothesis, params, rubric):
-    """Run a single experiment: train → eval → score → commit."""
+def run_experiment(hypothesis, params, rubric, *,
+                   parent_id=None, refinement_depth=0,
+                   critique=None, refinement_strategy=None):
+    """Run a single experiment: train → eval → score → commit.
+
+    Optional lineage kwargs (all default to falsy → elided from result JSON):
+      parent_id: the experiment this refines, if any
+      refinement_depth: 0 for fresh hypotheses, N for the Nth refinement in a chain
+      critique / refinement_strategy: LLM's rationale for the refinement
+    """
     global best_score, next_exp_id
 
     exp_id = f"exp-{next_exp_id:03d}"
@@ -273,15 +283,18 @@ def run_experiment(hypothesis, params, rubric):
     exp_dir = EXPERIMENTS_DIR / exp_id
     exp_dir.mkdir(parents=True, exist_ok=True)
 
+    lineage_tag = f" (refines {parent_id}, depth {refinement_depth})" if parent_id else ""
     print(f"\n{'='*60}")
-    print(f"[agent] Running {exp_id}: {hypothesis}")
+    print(f"[agent] Running {exp_id}{lineage_tag}: {hypothesis}")
     print(f"[agent] Params: {json.dumps(params)}")
     print(f"{'='*60}")
 
-    # Build train command
+    # Build train command. Keep param names as-is — train scripts declare
+    # them with underscores (e.g. --batch_size), so the previous underscore-
+    # to-dash mangling produced flags the trainer didn't recognize.
     cmd = [sys.executable, str(TRAIN_SCRIPT), "--output_dir", str(exp_dir)]
     for k, v in params.items():
-        cmd.append(f"--{k.replace('_', '-')}")
+        cmd.append(f"--{k}")
         cmd.append(str(v))
 
     # Run training
@@ -294,12 +307,16 @@ def run_experiment(hypothesis, params, rubric):
     except subprocess.TimeoutExpired:
         print(f"[agent] {exp_id}: TIMEOUT after 120s")
         return _make_result(exp_id, hypothesis, params, {"error": "timeout"}, 0.0,
-                           "failed", duration=120)
+                           "failed", duration=120,
+                           parent_id=parent_id, refinement_depth=refinement_depth,
+                           critique=critique, refinement_strategy=refinement_strategy)
 
     if train_result.returncode != 0:
         print(f"[agent] {exp_id}: train.py failed:\n{train_result.stderr[:500]}")
         return _make_result(exp_id, hypothesis, params, {"error": "train_failed"}, 0.0,
-                           "failed", duration=time.time() - start)
+                           "failed", duration=time.time() - start,
+                           parent_id=parent_id, refinement_depth=refinement_depth,
+                           critique=critique, refinement_strategy=refinement_strategy)
 
     # Parse train output for metrics
     try:
@@ -343,7 +360,9 @@ def run_experiment(hypothesis, params, rubric):
         elif not rubric["higher_is_better"] and score > best_score - rubric["fail_threshold"]:
             status = "reverted"
 
-    result = _make_result(exp_id, hypothesis, params, metrics, score, status, duration)
+    result = _make_result(exp_id, hypothesis, params, metrics, score, status, duration,
+                          parent_id=parent_id, refinement_depth=refinement_depth,
+                          critique=critique, refinement_strategy=refinement_strategy)
 
     # Git operations
     git_commit(exp_id, hypothesis)
@@ -362,8 +381,10 @@ def run_experiment(hypothesis, params, rubric):
     return result
 
 
-def _make_result(exp_id, hypothesis, params, metrics, score, status, duration):
-    return {
+def _make_result(exp_id, hypothesis, params, metrics, score, status, duration, *,
+                 parent_id=None, refinement_depth=0,
+                 critique=None, refinement_strategy=None):
+    result = {
         "id": exp_id,
         "hypothesis": hypothesis,
         "params": params,
@@ -374,6 +395,140 @@ def _make_result(exp_id, hypothesis, params, metrics, score, status, duration):
         "git_hash": "",
         "duration_seconds": round(duration, 1)
     }
+    # Lineage fields — elided when null/zero so old consumers stay unchanged.
+    if parent_id:
+        result["parent_id"] = parent_id
+    if refinement_depth:
+        result["refinement_depth"] = refinement_depth
+    if critique:
+        result["critique"] = critique
+    if refinement_strategy:
+        result["refinement_strategy"] = refinement_strategy
+    return result
+
+
+# ─── Iterative Refinement (Run → Evaluate → Improve → Run) ──────────────────
+
+def _should_refine(experiment, best, budget_left, args):
+    """MCTS-style gate: only expand promising branches."""
+    if experiment["status"] in ("failed", "reverted"):
+        return False
+    if budget_left <= args.min_refinement_budget:
+        return False
+    # First-ever hypothesis (best is still 0.0) always earns a chance;
+    # afterwards, prune branches that fall too far below the current best.
+    if best > 0.0 and experiment["score"] < best - args.refinement_gap:
+        return False
+    return True
+
+
+def _build_refinement_prompt(parent, rubric, best):
+    context = _read_context()
+    return f"""You are refining a previous experiment.
+
+## Goal (from context.md)
+{context}
+
+## Rubric
+Primary metric: {rubric['primary_metric']} (higher is better: {rubric['higher_is_better']})
+Best score so far: {best:.4f}
+
+## Previous experiment
+Hypothesis: {parent['hypothesis']}
+Params:     {json.dumps(parent['params'])}
+Metrics:    {json.dumps(parent.get('metrics', {}))}
+Score:      {parent['score']:.4f}
+Depth:      {parent.get('refinement_depth', 0)}
+
+## Your task
+1. CRITIQUE the previous attempt in one sentence (what likely capped the score).
+2. Propose ONE targeted refinement: change 1-2 params, keep the rest.
+3. Explain in one sentence WHY this change should help.
+
+Return ONLY valid JSON in this exact shape:
+{{"critique": "...", "refinement_strategy": "...", "params": {{"lr": 2e-5, "batch_size": 16, "epochs": 3}}}}
+"""
+
+
+def _parse_refinement(text):
+    """Extract {critique, refinement_strategy, params} from LLM output."""
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict) or "params" not in data:
+        return None
+    return {
+        "critique": str(data.get("critique", "")).strip(),
+        "refinement_strategy": str(data.get("refinement_strategy", "")).strip(),
+        "params": data["params"] if isinstance(data["params"], dict) else {},
+    }
+
+
+def _fallback_refinement(parent):
+    """Heuristic refinement when no LLM API is configured.
+
+    Perturb the numeric param with the largest current value up or down by 20%,
+    alternating direction by parent depth. Enough to smoke-test the wiring.
+    """
+    params = dict(parent.get("params", {}))
+    if not params:
+        return None
+    numeric = {k: v for k, v in params.items() if isinstance(v, (int, float))}
+    if not numeric:
+        return None
+    target_key = max(numeric, key=lambda k: abs(numeric[k]))
+    direction = 1 if parent.get("refinement_depth", 0) % 2 == 0 else -1
+    old = numeric[target_key]
+    new = old * (1 + 0.2 * direction)
+    # Preserve int-ness for batch_size / epochs etc.
+    if isinstance(old, int):
+        new = max(1, int(round(new)))
+    params[target_key] = new
+    return {
+        "critique": f"Score {parent['score']:.4f} suggests {target_key}={old} may be sub-optimal.",
+        "refinement_strategy": f"Perturb {target_key}: {old} -> {new}",
+        "params": params,
+    }
+
+
+def refine_experiment(parent, rubric, args):
+    """Produce and run one refinement of `parent`. Returns the new experiment
+    or None if the LLM/heuristic declines or output can't be parsed.
+    """
+    prompt = _build_refinement_prompt(parent, rubric, best_score)
+    model = args.refinement_model or args.model
+
+    have_api_key = bool(
+        os.environ.get("ANTHROPIC_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("DEEPSEEK_API_KEY")
+    )
+    refinement = None
+    if have_api_key:
+        llm_out = call_llm(prompt, model)
+        # call_llm may return a list (fallback hypotheses) or a str (LLM text).
+        if isinstance(llm_out, str):
+            refinement = _parse_refinement(llm_out)
+
+    if refinement is None:
+        refinement = _fallback_refinement(parent)
+    if refinement is None:
+        return None
+
+    hypothesis = f"[refine {parent['id']}] {refinement['refinement_strategy']}"
+    return run_experiment(
+        hypothesis,
+        refinement["params"],
+        rubric,
+        parent_id=parent["id"],
+        refinement_depth=parent.get("refinement_depth", 0) + 1,
+        critique=refinement["critique"],
+        refinement_strategy=refinement["refinement_strategy"],
+    )
 
 
 # ─── Main Loop ───────────────────────────────────────────────────────────────
@@ -462,6 +617,40 @@ Generate {args.hypotheses} hypotheses now:"""
 
             print(f"[agent] {result['id']}: score={result['score']:.4f}, "
                   f"status={result['status']}, budget_left={budget_remaining:.1f}s")
+
+            # Iterative refinement chain: Run → Evaluate → Improve → Run again.
+            # Selective / MCTS-style — only expand branches that pass _should_refine.
+            current = result
+            prev_score = None
+            for depth in range(1, args.max_refinement_depth + 1):
+                if stop_flag.is_set() or budget_remaining <= 0:
+                    break
+                if current["score"] >= args.target_score:
+                    print(f"[agent] {current['id']}: target {args.target_score} reached, ending chain")
+                    break
+                if not _should_refine(current, best_score, budget_remaining, args):
+                    break
+                if prev_score is not None and abs(current["score"] - prev_score) < args.plateau_tolerance:
+                    print(f"[agent] {current['id']}: score plateaued (Δ<{args.plateau_tolerance}), ending chain")
+                    break
+                prev_score = current["score"]
+
+                refine_start = time.time()
+                refined = refine_experiment(current, rubric, args)
+                if refined is None:
+                    print(f"[agent] {current['id']}: refinement declined, ending chain")
+                    break
+                budget_remaining -= (time.time() - refine_start)
+                refined["budget_remaining"] = round(budget_remaining, 1)
+
+                results.append(refined)
+                _save_results(results)
+                _broadcast_sse(refined)
+
+                print(f"[agent] {refined['id']} (depth {depth}): "
+                      f"score={refined['score']:.4f}, status={refined['status']}, "
+                      f"budget_left={budget_remaining:.1f}s")
+                current = refined
 
         # Brief pause before next iteration
         time.sleep(1)
@@ -673,6 +862,19 @@ def main():
                        help="Path to scoring rubric")
     parser.add_argument("--no-dashboard", action="store_true",
                        help="Run without dashboard server")
+    # Iterative refinement (Run → Evaluate → Improve → Run again)
+    parser.add_argument("--max-refinement-depth", type=int, default=3,
+                       help="Max depth of the refinement chain per hypothesis (0 disables)")
+    parser.add_argument("--plateau-tolerance", type=float, default=0.005,
+                       help="Stop a refinement chain when |Δscore| falls below this")
+    parser.add_argument("--target-score", type=float, default=1.0,
+                       help="Stop a refinement chain once this score is reached")
+    parser.add_argument("--refinement-gap", type=float, default=0.03,
+                       help="Only refine if experiment.score >= best_score - gap")
+    parser.add_argument("--min-refinement-budget", type=float, default=5.0,
+                       help="Skip refinement when budget_remaining <= this (seconds)")
+    parser.add_argument("--refinement-model", type=str, default=None,
+                       help="Optional model just for critique/refinement (defaults to --model)")
     args = parser.parse_args()
 
     # Ensure directories exist
