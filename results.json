@@ -168,5 +168,31 @@
     "critique": "lr may be sub-optimal",
     "refinement_strategy": "bump lr slightly",
     "budget_remaining": 8.1
+  },
+  {
+    "id": "exp-008",
+    "hypothesis": "[refine exp-007] bump lr slightly",
+    "params": {
+      "lr": 3e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.15
+    },
+    "metrics": {
+      "f1_score": 0.8452,
+      "accuracy": 0.8278,
+      "inference_time_ms": 1.87,
+      "training_duration_s": 22.6
+    },
+    "score": 0.8385,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:37:00.051292+00:00",
+    "git_hash": "84a23c9",
+    "duration_seconds": 5.1,
+    "parent_id": "exp-007",
+    "refinement_depth": 2,
+    "critique": "lr may be sub-optimal",
+    "refinement_strategy": "bump lr slightly",
+    "budget_remaining": 2.9
   }
 ]
