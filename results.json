@@ -120,5 +120,27 @@
     "critique": "lr may be sub-optimal",
     "refinement_strategy": "bump lr slightly",
     "budget_remaining": 18.6
+  },
+  {
+    "id": "exp-006",
+    "hypothesis": "baseline curated for demo trainer",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8332,
+      "accuracy": 0.829,
+      "inference_time_ms": 1.54,
+      "training_duration_s": 10.6
+    },
+    "score": 0.8336,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:36:49.572897+00:00",
+    "git_hash": "e091fc0",
+    "duration_seconds": 5.1,
+    "budget_remaining": 13.3
   }
 ]
