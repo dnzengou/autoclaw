@@ -20,5 +20,31 @@
     "git_hash": "1adc9c4",
     "duration_seconds": 5.1,
     "budget_remaining": 39.7
+  },
+  {
+    "id": "exp-002",
+    "hypothesis": "[refine exp-001] bump lr slightly",
+    "params": {
+      "lr": 3e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.15
+    },
+    "metrics": {
+      "f1_score": 0.8469,
+      "accuracy": 0.8488,
+      "inference_time_ms": 1.34,
+      "training_duration_s": 10.6
+    },
+    "score": 0.8492,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:33:27.448571+00:00",
+    "git_hash": "cd72ce4",
+    "duration_seconds": 5.1,
+    "parent_id": "exp-001",
+    "refinement_depth": 1,
+    "critique": "lr may be sub-optimal",
+    "refinement_strategy": "bump lr slightly",
+    "budget_remaining": 34.4
   }
 ]
