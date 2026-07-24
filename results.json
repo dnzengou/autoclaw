@@ -20,5 +20,27 @@
     "git_hash": "07d3404",
     "duration_seconds": 5.1,
     "budget_remaining": 14.7
+  },
+  {
+    "id": "exp-002",
+    "hypothesis": "baseline",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8433,
+      "accuracy": 0.8401,
+      "inference_time_ms": 1.54,
+      "training_duration_s": 12.8
+    },
+    "score": 0.8429,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:38:28.605337+00:00",
+    "git_hash": "c402e36",
+    "duration_seconds": 5.1,
+    "budget_remaining": 9.5
   }
 ]
