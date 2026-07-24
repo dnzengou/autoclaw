@@ -72,27 +72,5 @@
     "critique": "lr may be sub-optimal",
     "refinement_strategy": "bump lr slightly",
     "budget_remaining": 29.1
-  },
-  {
-    "id": "exp-004",
-    "hypothesis": "baseline curated for demo trainer",
-    "params": {
-      "lr": 2e-05,
-      "batch_size": 16,
-      "epochs": 3,
-      "dropout": 0.1
-    },
-    "metrics": {
-      "f1_score": 0.8501,
-      "accuracy": 0.844,
-      "inference_time_ms": 2.45,
-      "training_duration_s": 19.4
-    },
-    "score": 0.8394,
-    "status": "completed",
-    "timestamp": "2026-07-24T11:36:38.040217+00:00",
-    "git_hash": "2a4645f",
-    "duration_seconds": 5.1,
-    "budget_remaining": 23.9
   }
 ]
