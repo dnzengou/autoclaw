@@ -72,5 +72,53 @@
     "critique": "lr may be sub-optimal",
     "refinement_strategy": "bump lr slightly",
     "budget_remaining": 29.1
+  },
+  {
+    "id": "exp-004",
+    "hypothesis": "baseline curated for demo trainer",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8501,
+      "accuracy": 0.844,
+      "inference_time_ms": 2.45,
+      "training_duration_s": 19.4
+    },
+    "score": 0.8394,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:36:38.040217+00:00",
+    "git_hash": "2a4645f",
+    "duration_seconds": 5.1,
+    "budget_remaining": 23.9
+  },
+  {
+    "id": "exp-005",
+    "hypothesis": "[refine exp-004] bump lr slightly",
+    "params": {
+      "lr": 3e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.15
+    },
+    "metrics": {
+      "f1_score": 0.8295,
+      "accuracy": 0.8248,
+      "inference_time_ms": 1.81,
+      "training_duration_s": 11.6
+    },
+    "score": 0.8275,
+    "status": "reverted",
+    "timestamp": "2026-07-24T11:36:43.274985+00:00",
+    "git_hash": "b1bd3be",
+    "duration_seconds": 5.1,
+    "parent_id": "exp-004",
+    "refinement_depth": 1,
+    "critique": "lr may be sub-optimal",
+    "refinement_strategy": "bump lr slightly",
+    "budget_remaining": 18.6
   }
 ]
