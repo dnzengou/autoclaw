@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "exp-001",
+    "hypothesis": "baseline curated for demo trainer",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8631,
+      "accuracy": 0.8687,
+      "inference_time_ms": 1.58,
+      "training_duration_s": 12.9
+    },
+    "score": 0.8621,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:33:22.143786+00:00",
+    "git_hash": "1adc9c4",
+    "duration_seconds": 5.1,
+    "budget_remaining": 39.7
+  }
+]
