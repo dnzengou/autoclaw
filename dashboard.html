@@ -138,6 +138,39 @@ main { padding: 20px; max-width: 1400px; margin: 0 auto; width: 100%; }
 }
 .empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
 
+/* strategy genome fitness bar */
+.fitbar { display: inline-block; width: 56px; height: 6px; background: var(--surface-2); border-radius: 3px; margin-left: 6px; vertical-align: middle; overflow: hidden; }
+.fitbar > i { display: block; height: 100%; background: var(--accent-2); }
+.subrow { color: var(--muted); font-size: 11px; margin-top: 2px; font-family: var(--font-mono); }
+
+/* deals form + inline actions */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid input {
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 10px; font: inherit; width: 100%;
+}
+.form-grid input:focus { outline: none; border-color: var(--accent); }
+.form-actions { padding: 0 14px 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.hint { padding: 0 14px 14px; font-size: 12px; color: var(--muted); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.row-actions button {
+  background: var(--surface-2); color: var(--fg); border: 1px solid var(--border);
+  padding: 3px 8px; border-radius: 4px; font: 500 11px/1.6 var(--font-mono); cursor: pointer;
+}
+.row-actions button:hover { background: var(--surface); border-color: var(--border-hi); }
+.row-actions button.danger { color: var(--danger); }
+.pill-qualified { background: rgba(240,180,41,0.12); color: var(--warn); border-color: rgba(240,180,41,0.28); }
+.pill-approved  { background: rgba(45,212,168,0.12); color: var(--ok); border-color: rgba(45,212,168,0.28); }
+.pill-delivered { background: rgba(45,212,168,0.12); color: var(--ok); border-color: rgba(45,212,168,0.28); }
+.pill-paid      { background: rgba(45,212,168,0.18); color: var(--ok); border-color: rgba(45,212,168,0.40); }
+.pill-rejected  { background: rgba(239,68,68,0.12); color: var(--danger); border-color: rgba(239,68,68,0.28); }
+.pill-new       { background: var(--surface-2); color: var(--muted); border-color: var(--border); }
+details.prop { padding: 4px 0; font-size: 12px; }
+details.prop summary { cursor: pointer; color: var(--fg); }
+details.prop pre { white-space: pre-wrap; color: var(--muted); margin-top: 6px; font: 11px/1.5 var(--font-mono); }
+
 /* status pills */
 .pill {
   display: inline-block; padding: 2px 8px; border-radius: 999px;
@@ -202,6 +235,8 @@ body.demo .demo-banner { display: block; }
     <button data-tab="live" class="active"><kbd>1</kbd>Live</button>
     <button data-tab="history"><kbd>2</kbd>History</button>
     <button data-tab="context"><kbd>3</kbd>Context</button>
+    <button data-tab="evo"><kbd>4</kbd>Evolution</button>
+    <button data-tab="deals"><kbd>5</kbd>Deals</button>
   </nav>
   <div class="actions">
     <button id="btn-start" class="btn"><kbd>S</kbd>Start</button>
@@ -236,6 +271,50 @@ body.demo .demo-banner { display: block; }
     </div>
   </section>
 
+  <section id="view-evo" class="view">
+    <div class="grid">
+      <div class="stat"><div class="stat-label">Population</div><div id="evo-pop" class="stat-value">—</div><div class="stat-hint">strategy genomes</div></div>
+      <div class="stat"><div class="stat-label">Trajectories</div><div id="evo-traj" class="stat-value">—</div><div class="stat-hint">training signals on disk</div></div>
+      <div class="stat"><div class="stat-label">Stagnation</div><div id="evo-stag" class="stat-value">—</div><div id="evo-breaker" class="stat-hint">circuit breaker armed</div></div>
+      <div class="stat"><div class="stat-label">Generations</div><div id="evo-gen" class="stat-value">—</div><div class="stat-hint">deepest lineage</div></div>
+    </div>
+    <div class="panel" style="margin-top: 14px">
+      <div class="panel-head">Strategy genomes <span class="muted">· selected by softmax over fitness each iteration</span></div>
+      <div id="evo-genomes"></div>
+      <div class="hint">Wins spawn learned genomes; stagnation trips the circuit breaker and injects diversity. Every outcome appends to <span class="mono">.autoclaw/evo/trajectories.jsonl</span> — the accumulating trajectory dataset is the moat.</div>
+    </div>
+    <div class="panel" style="margin-top: 14px">
+      <div class="panel-head">Recent trajectories</div>
+      <div id="evo-trajectories"></div>
+    </div>
+  </section>
+
+  <section id="view-deals" class="view">
+    <div class="grid">
+      <div class="stat"><div class="stat-label">Open</div><div id="deals-open" class="stat-value">—</div><div class="stat-hint">awaiting approval</div></div>
+      <div class="stat"><div class="stat-label">In delivery</div><div id="deals-active" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Paid</div><div id="deals-paid" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Revenue (paid)</div><div id="deals-rev" class="stat-value">$0</div><div class="stat-hint">USD</div></div>
+    </div>
+    <div class="panel" style="margin-top: 14px">
+      <div class="panel-head">New prospect <span class="muted">· matched against the toolbox</span></div>
+      <div class="form-grid">
+        <input id="deal-customer" type="text" placeholder="Customer / company">
+        <input id="deal-contact" type="text" placeholder="Contact (email, optional)">
+        <input id="deal-request" type="text" class="full" placeholder="What do they need?">
+      </div>
+      <div class="form-actions">
+        <button id="deal-add" class="btn btn-accent">Add &amp; qualify</button>
+        <button id="deal-fetch" class="btn" title="Pulls prospects from AUTOCLAW_DEALS_FEED (explicit trigger only)">Fetch from feed</button>
+      </div>
+      <div class="hint">Toolbox: Clow · SAI Agency · MOOC Studio · ProductizeYou · Funding Dashboard · CAS Lab. Nothing is sent to a customer automatically — every deal needs your approval below.</div>
+    </div>
+    <div class="panel" style="margin-top: 14px">
+      <div class="panel-head">Pipeline</div>
+      <div id="deals-pipeline"></div>
+    </div>
+  </section>
+
   <section id="view-context" class="view">
     <div class="panel">
       <div class="panel-head">context.md <span class="muted">· your goals</span></div>
@@ -251,7 +330,7 @@ body.demo .demo-banner { display: block; }
 <footer class="footer">
   <span>
     <span id="footer-state">○ idle</span> · <span id="footer-conn">SSE offline</span> ·
-    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs · <kbd>S</kbd> start · <kbd>X</kbd> stop · <kbd>R</kbd> reset
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd> tabs · <kbd>S</kbd> start · <kbd>X</kbd> stop · <kbd>R</kbd> reset
   </span>
 </footer>
 
@@ -267,7 +346,7 @@ const DEMO = new URLSearchParams(location.search).get("demo") === "1"
           || window.AUTOCLAW_DEMO === true;
 if (DEMO) document.body.classList.add("demo");
 
-const state = { status: null, experiments: [], context: "" };
+const state = { status: null, experiments: [], context: "", evo: null, genomes: [], trajectories: [], deals: [] };
 
 async function refreshStatus() {
   try {
@@ -419,6 +498,8 @@ document.querySelectorAll(".tabs button").forEach(btn => {
 function switchTab(name) {
   document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${name}`));
+  if (name === "evo") refreshEvo();
+  else if (name === "deals") refreshDeals();
 }
 
 // Keyboard shortcuts
@@ -430,7 +511,136 @@ window.addEventListener("keydown", (e) => {
   else if (e.key === "1") switchTab("live");
   else if (e.key === "2") switchTab("history");
   else if (e.key === "3") switchTab("context");
+  else if (e.key === "4") switchTab("evo");
+  else if (e.key === "5") switchTab("deals");
 });
+
+// ─── Evolution + Deals ──────────────────────────────────────────────
+async function refreshEvo() {
+  if (DEMO) { hydrateEvoDemo(); renderEvo(); return; }
+  try {
+    const [st, gen, tr] = await Promise.all([
+      fetch(`${API}/api/evo/status`).then(r => r.json()),
+      fetch(`${API}/api/evo/genomes`).then(r => r.json()),
+      fetch(`${API}/api/evo/trajectories`).then(r => r.json()),
+    ]);
+    state.evo = st; state.genomes = gen || []; state.trajectories = tr || [];
+    renderEvo();
+  } catch {}
+}
+function renderEvo() {
+  const st = state.evo;
+  if (st) {
+    document.getElementById("evo-pop").textContent = st.population_size;
+    document.getElementById("evo-traj").textContent = st.trajectory_count;
+    document.getElementById("evo-stag").textContent = st.stagnation;
+    document.getElementById("evo-gen").textContent = st.generations;
+    document.getElementById("evo-breaker").textContent = st.breaker_tripped ? "breaker about to trip" : "circuit breaker armed";
+  }
+  const maxFit = Math.max(0.01, ...state.genomes.map(g => g.fitness));
+  const genomeRows = state.genomes.slice().sort((a, b) => b.fitness - a.fitness).map(g => `
+    <tr>
+      <td class="mono">${escapeHTML(g.id)}${g.parent_id ? `<div class="subrow">← ${escapeHTML(g.parent_id)}</div>` : ""}</td>
+      <td>${escapeHTML(g.niche)}</td>
+      <td class="hypo" title="${escapeHTML(g.strategy)}">${escapeHTML(g.strategy)}${g.memories && g.memories.length ? ` <span class="subrow">· ${g.memories.length} memories</span>` : ""}</td>
+      <td class="num mono">${g.fitness.toFixed(3)}<span class="fitbar"><i style="width:${((g.fitness / maxFit) * 100).toFixed(0)}%"></i></span></td>
+      <td class="num mono muted" title="Q-gate: high variance dampens selection">${(g.variance ?? 0).toFixed(3)}</td>
+      <td class="num mono muted">${g.plays}</td>
+      <td class="num mono muted">${g.wins}</td>
+      <td class="num mono muted">${g.generation}</td>
+    </tr>`).join("");
+  document.getElementById("evo-genomes").innerHTML = genomeRows
+    ? `<table class="tbl"><thead><tr><th>ID</th><th>Niche</th><th>Strategy</th><th class="num">Fitness</th><th class="num">Var</th><th class="num">Plays</th><th class="num">Wins</th><th class="num">Gen</th></tr></thead><tbody>${genomeRows}</tbody></table>`
+    : `<div class="empty">No genomes.</div>`;
+
+  const trajRows = state.trajectories.slice().reverse().slice(0, 40).map(t => `
+    <tr>
+      <td class="mono">${escapeHTML(t.experiment_id)}</td>
+      <td class="mono muted">${escapeHTML(t.genome_id)}</td>
+      <td class="hypo">${escapeHTML(t.hypothesis)}</td>
+      <td class="num mono">${t.score.toFixed(4)}</td>
+      <td class="num mono ${t.delta >= 0 ? "" : "muted"}">${t.delta >= 0 ? "+" : ""}${t.delta.toFixed(4)}</td>
+      <td><span class="pill pill-${t.improved ? "completed" : "reverted"}">${t.improved ? "improved" : "no gain"}</span></td>
+    </tr>`).join("");
+  document.getElementById("evo-trajectories").innerHTML = trajRows
+    ? `<table class="tbl"><thead><tr><th>Experiment</th><th>Genome</th><th>Hypothesis</th><th class="num">Score</th><th class="num">Δ</th><th>Result</th></tr></thead><tbody>${trajRows}</tbody></table>`
+    : `<div class="empty">No trajectories yet — run the loop.</div>`;
+}
+
+const DEAL_ACTIONS = {
+  new: [["approve", ""], ["reject", "danger"]],
+  qualified: [["approve", ""], ["reject", "danger"]],
+  approved: [["delivered", ""], ["reject", "danger"]],
+  delivered: [["paid", ""]],
+  rejected: [], paid: [],
+};
+
+async function refreshDeals() {
+  if (DEMO) { hydrateDealsDemo(); renderDeals(); return; }
+  try {
+    state.deals = await fetch(`${API}/api/deals`).then(r => r.json()) || [];
+    renderDeals();
+  } catch {}
+}
+function renderDeals() {
+  const deals = state.deals;
+  const open = deals.filter(d => d.status === "new" || d.status === "qualified").length;
+  const active = deals.filter(d => d.status === "approved").length;
+  const paid = deals.filter(d => d.status === "paid").length;
+  const rev = deals.filter(d => d.status === "paid").reduce((s, d) => s + d.price_usd, 0);
+  document.getElementById("deals-open").textContent = open;
+  document.getElementById("deals-active").textContent = active;
+  document.getElementById("deals-paid").textContent = paid;
+  document.getElementById("deals-rev").textContent = "$" + rev.toLocaleString();
+
+  const rows = deals.slice().reverse().map(d => `
+    <tr>
+      <td>${escapeHTML(d.customer)}${d.contact ? `<div class="subrow">${escapeHTML(d.contact)}</div>` : ""}</td>
+      <td>
+        <details class="prop"><summary>${escapeHTML(d.request)}</summary><pre>${escapeHTML(d.proposal || "No proposal drafted — no toolbox match.")}</pre></details>
+        ${d.payment_link ? `<div class="subrow">pay: ${escapeHTML(d.payment_link)}</div>` : ""}
+      </td>
+      <td class="mono">${(d.matched_tools || []).map(escapeHTML).join("<br>") || `<span class="pill pill-failed">no match</span>`}</td>
+      <td class="num mono">$${d.price_usd.toLocaleString()}</td>
+      <td><span class="pill pill-${escapeAttr(d.status)}">${escapeHTML(d.status)}</span></td>
+      <td><div class="row-actions">${(DEAL_ACTIONS[d.status] || []).map(([a, cls]) =>
+        `<button class="${cls}" data-deal-id="${escapeAttr(d.id)}" data-deal-action="${a}">${a}</button>`).join("")}</div></td>
+    </tr>`).join("");
+  document.getElementById("deals-pipeline").innerHTML = rows
+    ? `<table class="tbl"><thead><tr><th>Customer</th><th>Request / proposal</th><th>Tools</th><th class="num">Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="empty">No deals yet.</div>`;
+}
+
+document.getElementById("deals-pipeline").addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("button[data-deal-action]"); if (!btn) return;
+  const id = btn.dataset.dealId, action = btn.dataset.dealAction;
+  if (DEMO) { dealDemoTransition(id, action); renderDeals(); return; }
+  const r = await fetch(`${API}/api/deals/${id}/${action}`, { method: "POST" }).then(r => r.json());
+  if (r.error) alert(r.error);
+  refreshDeals();
+});
+document.getElementById("deal-add").onclick = async () => {
+  const customer = document.getElementById("deal-customer").value.trim();
+  const contact = document.getElementById("deal-contact").value.trim();
+  const request = document.getElementById("deal-request").value.trim();
+  if (!customer || !request) return alert("Customer and request are required.");
+  if (DEMO) { dealDemoIntake(customer, contact, request); }
+  else {
+    const r = await fetch(`${API}/api/deals`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer, contact, request }) }).then(r => r.json());
+    if (r.error) return alert(r.error);
+  }
+  document.getElementById("deal-customer").value = "";
+  document.getElementById("deal-contact").value = "";
+  document.getElementById("deal-request").value = "";
+  refreshDeals();
+};
+document.getElementById("deal-fetch").onclick = async () => {
+  if (DEMO) return alert("Demo mode: feed fetch is disabled. Set AUTOCLAW_DEALS_FEED and run the server for real.");
+  const r = await fetch(`${API}/api/deals/fetch`, { method: "POST" }).then(r => r.json());
+  alert(r.error ? r.error : `Added ${r.added} prospect(s) from feed.`);
+  refreshDeals();
+};
 
 // ─── Demo mode ──────────────────────────────────────────────────────
 // Hydrates the UI with a plausible past run (20 experiments), then simulates
@@ -555,13 +765,125 @@ function demoUpdateStatus() {
   renderStats();
 }
 
+// Demo seeds for evolution + deals (client-side only, no server calls).
+const EVO_DEMO_GENOMES = [
+  { id: "gen0-00", name: "lr-tuner", niche: "hyperparameters",
+    strategy: "Focus on learning rate, warmup, and schedule changes. One knob per experiment.",
+    fitness: 0.72, plays: 8, wins: 3, generation: 0 },
+  { id: "gen0-01", name: "regularizer", niche: "regularization",
+    strategy: "Focus on dropout, weight decay, label smoothing, or augmentation to reduce overfitting.",
+    fitness: 0.61, plays: 5, wins: 1, generation: 0 },
+  { id: "gen0-02", name: "architect", niche: "architecture",
+    strategy: "Propose a structural change: layer sizes, normalization placement, activation choice.",
+    fitness: 0.48, plays: 4, wins: 0, generation: 0 },
+  { id: "gen0-03", name: "data-shaper", niche: "data",
+    strategy: "Focus on data: batch composition, sampling, augmentation, or preprocessing changes.",
+    fitness: 0.55, plays: 3, wins: 1, generation: 0 },
+  { id: "gen0-04", name: "radical", niche: "exploration",
+    strategy: "Propose a bold, unconventional change unlike previous experiments.",
+    fitness: 0.50, plays: 0, wins: 0, generation: 0 },
+  { id: "evo-0001", name: "learned-0001", niche: "hyperparameters", parent_id: "gen0-00",
+    strategy: "Build on this proven direction from a past winning experiment: 3e-5 lr with cosine decay.",
+    fitness: 0.78, plays: 2, wins: 1, generation: 1 },
+];
+const EVO_DEMO_TRAJECTORIES = DEMO_SEED.map((e, i) => ({
+  experiment_id: e.id,
+  genome_id: EVO_DEMO_GENOMES[i % 5].id,
+  hypothesis: e.hypothesis,
+  score: e.score,
+  delta: i > 0 ? +(e.score - DEMO_SEED[i - 1].score).toFixed(4) : 0,
+  improved: e.status === "completed" && (i === 0 || e.score > DEMO_SEED[i - 1].score),
+  timestamp: e.timestamp,
+}));
+function hydrateEvoDemo() {
+  state.evo = {
+    population_size: EVO_DEMO_GENOMES.length,
+    trajectory_count: EVO_DEMO_TRAJECTORIES.length,
+    stagnation: 2, breaker_tripped: false,
+    generations: 1,
+  };
+  state.genomes = EVO_DEMO_GENOMES;
+  state.trajectories = EVO_DEMO_TRAJECTORIES;
+}
+
+const DEMO_TOOLBOX = [
+  { name: "Clow", keywords: ["agent", "automation", "loop", "bot"] },
+  { name: "SAI Agency", keywords: ["consulting", "strategy", "integration", "llm"] },
+  { name: "MOOC Studio", keywords: ["course", "training", "curriculum", "workshop", "mooc"] },
+  { name: "ProductizeYou", keywords: ["saas", "template", "digital product", "monetize"] },
+  { name: "Funding Dashboard", keywords: ["grant", "funding", "investor", "fundraising"] },
+  { name: "CAS Lab", keywords: ["simulation", "model", "complex", "digital twin", "webapp", "dashboard"] },
+];
+const DEMO_PRICES = { Clow: 2500, "SAI Agency": 3500, "MOOC Studio": 1800, ProductizeYou: 1500, "Funding Dashboard": 1200, "CAS Lab": 4000 };
+function demoMatchToolbox(request) {
+  const lower = request.toLowerCase();
+  const matched = DEMO_TOOLBOX.filter(t => t.keywords.some(k => lower.includes(k))).map(t => t.name);
+  const price = matched.reduce((s, n) => s + (DEMO_PRICES[n] || 0), 0);
+  return { matched, price };
+}
+function demoProposal(customer, request, matched, price) {
+  return `Proposal for ${customer}\n\nRequest: ${request}\n\nProposed services:\n${matched.map(m => "- " + m).join("\n")}\n\nEstimated engagement: $${price} USD.\nDelivery starts on approval; payment on delivery.`;
+}
+function demoHashId(a, b) {
+  let h = 5381; for (const s of [a, b]) for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(12, "0").slice(-12);
+}
+function hydrateDealsDemo() {
+  if (state.deals.length) return; // don't clobber user-added demo deals
+  const now = new Date().toISOString();
+  const seed = [
+    { customer: "Acme Labs", contact: "cto@acme.io",
+      request: "We need a simulation webapp and a training course for our team.",
+      status: "approved" },
+    { customer: "Kaira Health", contact: "ops@kaira.health",
+      request: "Grant discovery + fundraising tracking dashboard for our AI program.",
+      status: "delivered" },
+    { customer: "Studio Nord", contact: "hi@studionord.se",
+      request: "Custom LLM strategy consulting for a client rollout.",
+      status: "paid" },
+  ];
+  state.deals = seed.map(s => {
+    const { matched, price } = demoMatchToolbox(s.request);
+    return {
+      id: demoHashId(s.customer, s.request), source: "demo",
+      customer: s.customer, contact: s.contact, request: s.request,
+      matched_tools: matched, price_usd: price,
+      proposal: demoProposal(s.customer, s.request, matched, price),
+      status: s.status, created_at: now, updated_at: now,
+    };
+  });
+}
+function dealDemoIntake(customer, contact, request) {
+  const { matched, price } = demoMatchToolbox(request);
+  const id = demoHashId(customer, request);
+  if (state.deals.some(d => d.id === id)) return alert(`Duplicate: deal ${id} already exists.`);
+  const now = new Date().toISOString();
+  state.deals.push({
+    id, source: "manual", customer, contact, request,
+    matched_tools: matched, price_usd: price,
+    proposal: matched.length ? demoProposal(customer, request, matched, price) : "",
+    status: matched.length ? "qualified" : "new",
+    created_at: now, updated_at: now,
+  });
+}
+function dealDemoTransition(id, action) {
+  const d = state.deals.find(x => x.id === id); if (!d) return;
+  const flow = { approve: "approved", reject: "rejected", delivered: "delivered", paid: "paid" };
+  d.status = flow[action] || d.status;
+  d.updated_at = new Date().toISOString();
+}
+
 // ─── Boot ──────────────────────────────────────────────────────────
 if (DEMO) {
   state.experiments = DEMO_SEED.slice();
   state.context = DEMO_CONTEXT;
   document.getElementById("context-editor").value = DEMO_CONTEXT;
+  hydrateEvoDemo();
+  hydrateDealsDemo();
   demoUpdateStatus();
   renderAll();
+  renderEvo();
+  renderDeals();
 } else {
   refreshStatus();
   refreshResults();

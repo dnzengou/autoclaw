@@ -314,7 +314,8 @@ func mainLoop(stop chan struct{}) {
 		log.Printf("Iteration %d — genome %s (%s, fitness %.2f)",
 			iteration, genome.ID, genome.Niche, genome.Fitness)
 
-		hypotheses := generateHypotheses(context, pastResults, genome.Strategy)
+		// MEMORY_RETRIEVE_INJECT: strategy + this genome's proven wins.
+		hypotheses := generateHypotheses(context, pastResults, evoEngine.StrategyWithMemory(genome))
 		if len(hypotheses) == 0 {
 			log.Println("No hypotheses generated, stopping.")
 			return

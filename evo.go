@@ -18,9 +18,21 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
+
+// appendMemory keeps the top-N highest-scoring memories for a genome.
+func appendMemory(mems []GenomeMemory, m GenomeMemory) []GenomeMemory {
+	mems = append(mems, m)
+	sort.SliceStable(mems, func(i, j int) bool { return mems[i].Score > mems[j].Score })
+	if len(mems) > evoMemoryPerGenome {
+		mems = mems[:evoMemoryPerGenome]
+	}
+	return mems
+}
 
 // ─── Data Model ─────────────────────────────────────────────────────────────
 
@@ -30,12 +42,27 @@ type SkillGenome struct {
 	Niche      string  `json:"niche"`
 	Strategy   string  `json:"strategy"` // injected into the hypothesis prompt
 	Fitness    float64 `json:"fitness"`
+	Variance   float64 `json:"variance"` // running variance of rewards (Q-gate input)
 	Plays      int     `json:"plays"`
 	Wins       int     `json:"wins"`
 	Generation int     `json:"generation"`
 	ParentID   string  `json:"parent_id,omitempty"`
 	CreatedAt  string  `json:"created_at"`
+
+	// MEMORY_RETRIEVE_INJECT: top winning hypotheses this genome produced.
+	// Injected into future prompts as prior wins from this strategy's niche.
+	Memories []GenomeMemory `json:"memories,omitempty"`
 }
+
+// GenomeMemory is a compact record of a proven hypothesis for one genome.
+type GenomeMemory struct {
+	Hypothesis string  `json:"hypothesis"`
+	Score      float64 `json:"score"`
+	Delta      float64 `json:"delta"`
+	Timestamp  string  `json:"timestamp"`
+}
+
+const evoMemoryPerGenome = 3
 
 type Trajectory struct {
 	ExperimentID string  `json:"experiment_id"`
@@ -154,8 +181,10 @@ func (e *EvoEngine) save() {
 	}
 }
 
-// Select picks a genome via softmax over fitness: better strategies get
-// chosen more often, but every genome keeps a nonzero chance (exploration).
+// Select picks a genome via softmax over Q-gated fitness: better strategies
+// get chosen more often, but a genome with high reward variance is dampened
+// so one lucky play doesn't dominate selection. Every genome keeps a nonzero
+// chance (exploration).
 func (e *EvoEngine) Select() SkillGenome {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -163,7 +192,15 @@ func (e *EvoEngine) Select() SkillGenome {
 	weights := make([]float64, len(e.genomes))
 	total := 0.0
 	for i, g := range e.genomes {
-		weights[i] = math.Exp(g.Fitness / evoSelectionTemp)
+		// Q-gate: penalize genomes whose reward stddev is > 0.15 by scaling
+		// their effective fitness down. Unproven genomes (<3 plays) keep raw
+		// fitness so they still get their chance to be sampled.
+		effective := g.Fitness
+		if g.Plays >= 3 {
+			stddev := math.Sqrt(g.Variance)
+			effective = g.Fitness * math.Exp(-2*math.Max(0, stddev-0.15))
+		}
+		weights[i] = math.Exp(effective / evoSelectionTemp)
 		total += weights[i]
 	}
 
@@ -176,6 +213,22 @@ func (e *EvoEngine) Select() SkillGenome {
 		}
 	}
 	return e.genomes[len(e.genomes)-1]
+}
+
+// StrategyWithMemory returns the genome's strategy plus a "prior wins" block
+// summarizing its stored memories. Injected into the LLM prompt so the model
+// sees which specific hypotheses have worked under this strategy before.
+func (e *EvoEngine) StrategyWithMemory(g SkillGenome) string {
+	if len(g.Memories) == 0 {
+		return g.Strategy
+	}
+	var sb strings.Builder
+	sb.WriteString(g.Strategy)
+	sb.WriteString("\n\nPrior wins under this strategy (do not repeat verbatim; build on them):")
+	for _, m := range g.Memories {
+		fmt.Fprintf(&sb, "\n- (score %.4f) %s", m.Score, m.Hypothesis)
+	}
+	return sb.String()
 }
 
 // Record feeds one experiment outcome back into the population and appends
@@ -208,8 +261,17 @@ func (e *EvoEngine) Record(genomeID, experimentID, hypothesis string, score, bes
 			g.Plays++
 			if improved {
 				g.Wins++
+				g.Memories = appendMemory(g.Memories, GenomeMemory{
+					Hypothesis: hypothesis, Score: score, Delta: delta,
+					Timestamp: time.Now().UTC().Format(time.RFC3339),
+				})
 			}
+			// Welford-style online variance update on the reward stream.
+			oldFit := g.Fitness
 			g.Fitness = evoFitnessDecay*g.Fitness + (1-evoFitnessDecay)*reward
+			// Track squared deviation as a running EMA — cheap and good enough.
+			diff := reward - oldFit
+			g.Variance = evoFitnessDecay*g.Variance + (1-evoFitnessDecay)*diff*diff
 			break
 		}
 	}

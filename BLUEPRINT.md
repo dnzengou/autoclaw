@@ -1,8 +1,32 @@
 # Autoclaw — Blueprint
 
-> Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
+> Self-evolving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
 
-**Version:** 0.3.1 · **Date:** 2026-07-17 · **License:** MIT
+**Version:** 0.4.0 · **Date:** 2026-07-28 · **License:** MIT
+
+## EvoMetaClaw — the strategic moat
+
+Every experiment is a training signal. Strategy genomes (`evo.go`) compete via
+replicator dynamics: **softmax over Q-gated fitness** (variance-dampened, so a
+lucky play doesn't dominate), **EMA fitness + running variance** updated from
+real outcomes, **per-genome memory** of top winning hypotheses injected into
+the next prompt as prior wins, **auto-summarization** of new wins into new
+genomes, and a **circuit breaker** that injects diversity mutations on
+stagnation. All outcomes append to `.autoclaw/evo/trajectories.jsonl`.
+
+Rationale: a competitor can copy a registry. They cannot copy SkillOpt-powered
+self-evolving loops without rebuilding the training paradigm *and* accumulating
+the trajectory data. The dataset compounds with every run — that is the flywheel.
+
+## Deals pipeline — commercial use case
+
+`deals.go` + the Deals dashboard tab: prospect intake (manual, webhook POST to
+`/api/deals`, or explicit fetch from `AUTOCLAW_DEALS_FEED`), keyword
+qualification against the desiredsolutions toolbox (Clow, SAI Agency, MOOC
+Studio, ProductizeYou, Funding Dashboard, CAS Lab), auto-drafted proposals with
+price estimates, then a human-gated lifecycle: qualified → approved → delivered
+→ paid. Nothing leaves the system without operator approval. Payment link via
+`PAYMENT_LINK_URL`.
 
 ## Mission
 
@@ -82,6 +106,13 @@ autoclaw/
 | Web dashboard | ✅ |
 | Claude / DeepSeek / OpenAI harness | ✅ |
 | Multi-channel distribution | ✅ |
+| EvoMetaClaw: genome selection + trajectory flywheel | ✅ |
+| EvoMetaClaw: Q-gate (variance-dampened selection) + per-genome memory | ✅ |
+| Deals pipeline: intake → qualify → approve → paid | ✅ |
+| Dashboard: 5 tabs under one design system, demo-mode for evo + deals | ✅ |
+| Rust core compiles clean (fmt + clippy + build blocking in CI) | ✅ |
+| LLM-refined proposals (optional, key-gated) | 🔲 |
+| Evo: GRPO-style multi-objective fitness | 🔲 |
 | Multi-agent support | 🔲 |
 | Plugin system | 🔲 |
 | Distributed training | 🔲 |
@@ -201,6 +232,36 @@ of the product. Same UI as the real dashboard; the difference is the data path:
 3. Manual: `pip publish`, `npm publish`, update Homebrew tap with new SHA256.
 
 ## Changelog
+
+### 0.4.0 — 2026-07-28
+- **EvoMetaClaw** (`evo.go`): strategy genomes with softmax selection driven
+  by real experiment outcomes, auto-summarization of winning hypotheses into
+  new genomes, stagnation circuit breaker that injects diversity mutants,
+  persisted trajectory log — the accumulating training dataset is the moat.
+- **Q-gate**: running-variance tracking on each genome dampens selection
+  weight when reward variance exceeds 0.15 (after ≥3 plays), so one lucky
+  score doesn't overpower more consistent strategies.
+- **Per-genome memory** (MEMORY_RETRIEVE_INJECT): top-3 winning hypotheses
+  are stored per genome and injected into the next prompt for that genome —
+  the model sees which specific hypotheses have worked under this strategy.
+- **Deals pipeline** (`deals.go`): prospect intake, toolbox qualification
+  (Clow, SAI Agency, MOOC Studio, ProductizeYou, Funding Dashboard, CAS Lab),
+  proposal drafting, human-gated approve/deliver/paid lifecycle, optional
+  operator-triggered feed fetch, payment-link config.
+- **Dashboard**: extended v0.3.1 five-tab layout adds Evolution and Deals
+  under the same design tokens, keyboard shortcuts 4/5, and full demo-mode
+  seed data (evo population + genomes with lineage; 3 realistic deals across
+  pipeline stages, $3,500 seeded revenue) so `?demo=1` shows the full moat
+  story with zero server.
+- **Go hardening**: race-free loop lifecycle (mutex-guarded state), server no
+  longer exits when stdin closes in containers, `--auto-start` flag,
+  Anthropic model updated to `claude-opus-4-8` (env `AUTOCLAW_MODEL`), root
+  `go.mod`.
+- **Rust core fixed**: compiles clean for the first time — 13 unused/broken
+  dependencies removed (incl. git2 → git CLI, metrics-exporter-prometheus →
+  hand-rendered text format), real start/stop wiring in the API server,
+  rubric endpoints implemented. CI gates (fmt, clippy -D warnings, test,
+  build) are blocking; Go gate added.
 
 ### 0.3.1 — 2026-07-17
 - User demo: `dashboard.html?demo=1` / `autoclaw.dev/demo` — same UI, seeded data + simulated SSE, zero server.
