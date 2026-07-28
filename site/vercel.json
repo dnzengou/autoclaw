@@ -3,7 +3,8 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/install.sh", "destination": "/install.sh" },
-    { "source": "/install.ps1", "destination": "/install.ps1" }
+    { "source": "/install.ps1", "destination": "/install.ps1" },
+    { "source": "/demo", "destination": "/dashboard.html?demo=1" }
   ],
   "headers": [
     {
