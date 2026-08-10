@@ -41,19 +41,25 @@ def _ingest_root_from_env() -> Path:
 def _safe_ingest_path(user_input: str, root: Path) -> Path | None:
     """Reject paths outside the configured ingest root — SSRF/path-traversal guard.
 
-    The HTTP surface must never let a network caller read /etc/shadow or a mounted
-    volume. Everything gets resolved (symlink-follow) then checked to be under
-    RAG_INGEST_ROOT (default: user's home directory).
+    Contract for the HTTP surface: only *relative* paths under `root` are
+    accepted. Absolute paths, `~`, and any component with `..` are rejected
+    up-front. The final resolved path is then verified to still be under
+    root (defense-in-depth against symlink escapes).
     """
     if not user_input:
         return None
-    try:
-        candidate = Path(user_input).expanduser().resolve(strict=True)
-    except (OSError, RuntimeError):
+    # Reject anything that could escape or absolute-address the filesystem.
+    if user_input.startswith(("/", "\\", "~")) or ".." in Path(user_input).parts:
         return None
-    # Path.is_relative_to landed in 3.9; use a portable check.
+    if len(user_input) > 4096:
+        return None
+    # Join first, then resolve — no direct Path(user_input) sink.
+    candidate = (root / user_input).resolve()
+    if not candidate.exists():
+        return None
+    # Double-check symlink didn't escape root (portable is_relative_to).
     try:
-        candidate.relative_to(root)
+        candidate.relative_to(root.resolve())
     except ValueError:
         return None
     return candidate
