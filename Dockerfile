@@ -8,7 +8,7 @@ RUN go mod init github.com/dnzengou/autoclaw && \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # Runtime stage
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk add --no-cache git ca-certificates curl python3 tini && \
     addgroup -S autoclaw && adduser -S autoclaw -G autoclaw
 
