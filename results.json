@@ -1,226 +1,68 @@
 [
-============================================================
-[agent] Running exp-001: [
-[agent] Params: [
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "[",
-  "params": [,
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:17Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Try learning rate 2e-5 with linear warmup (10% of steps)
-[agent] Params: {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Try learning rate 2e-5 with linear warmup (10% of steps)",
-  "params": {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:18Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Increase learning rate to 3e-5 with cosine decay schedule
-[agent] Params: {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Increase learning rate to 3e-5 with cosine decay schedule",
-  "params": {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:18Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Add random word dropout augmentation (rate=0.1) during training
-[agent] Params: {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Add random word dropout augmentation (rate=0.1) during training",
-  "params": {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:19Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: ]
-[agent] Params: ]
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "]",
-  "params": ],
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:20Z",
-  "git_hash": "unknown",
-  "duration_seconds": 1
-}, 
-============================================================
-[agent] Running exp-001: [
-[agent] Params: [
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "[",
-  "params": [,
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:21Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Try learning rate 2e-5 with linear warmup (10% of steps)
-[agent] Params: {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Try learning rate 2e-5 with linear warmup (10% of steps)",
-  "params": {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:22Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Increase learning rate to 3e-5 with cosine decay schedule
-[agent] Params: {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Increase learning rate to 3e-5 with cosine decay schedule",
-  "params": {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:23Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Add random word dropout augmentation (rate=0.1) during training
-[agent] Params: {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Add random word dropout augmentation (rate=0.1) during training",
-  "params": {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:24Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: ]
-[agent] Params: ]
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "]",
-  "params": ],
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:24Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: [
-[agent] Params: [
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "[",
-  "params": [,
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:26Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Try learning rate 2e-5 with linear warmup (10% of steps)
-[agent] Params: {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Try learning rate 2e-5 with linear warmup (10% of steps)",
-  "params": {"lr": 2e-5, "warmup_ratio": 0.1, "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:27Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Increase learning rate to 3e-5 with cosine decay schedule
-[agent] Params: {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Increase learning rate to 3e-5 with cosine decay schedule",
-  "params": {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:28Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: Add random word dropout augmentation (rate=0.1) during training
-[agent] Params: {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1}
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "Add random word dropout augmentation (rate=0.1) during training",
-  "params": {"lr": 2e-5, "batch_size": 16, "epochs": 3, "augmentation": "word_dropout", "aug_rate": 0.1},
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:29Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}, 
-============================================================
-[agent] Running exp-001: ]
-[agent] Params: ]
-============================================================
-{
-  "id": "exp-001",
-  "hypothesis": "]",
-  "params": ],
-  "metrics": autoclaw.sh[423]: python3: inaccessible or not found,
-  "score": 0,
-  "status": "completed",
-  "timestamp": "2026-04-29T00:51:29Z",
-  "git_hash": "unknown",
-  "duration_seconds": 0
-}]
+  {
+    "id": "exp-001",
+    "hypothesis": "baseline",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8398,
+      "accuracy": 0.8552,
+      "inference_time_ms": 2.13,
+      "training_duration_s": 13.7
+    },
+    "score": 0.8376,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:38:22.334616+00:00",
+    "git_hash": "07d3404",
+    "duration_seconds": 5.1,
+    "budget_remaining": 14.7
+  },
+  {
+    "id": "exp-002",
+    "hypothesis": "baseline",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8433,
+      "accuracy": 0.8401,
+      "inference_time_ms": 1.54,
+      "training_duration_s": 12.8
+    },
+    "score": 0.8429,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:38:28.605337+00:00",
+    "git_hash": "c402e36",
+    "duration_seconds": 5.1,
+    "budget_remaining": 9.5
+  },
+  {
+    "id": "exp-003",
+    "hypothesis": "baseline",
+    "params": {
+      "lr": 2e-05,
+      "batch_size": 16,
+      "epochs": 3,
+      "dropout": 0.1
+    },
+    "metrics": {
+      "f1_score": 0.8392,
+      "accuracy": 0.8489,
+      "inference_time_ms": 1.48,
+      "training_duration_s": 13.8
+    },
+    "score": 0.8424,
+    "status": "completed",
+    "timestamp": "2026-07-24T11:38:34.869419+00:00",
+    "git_hash": "b24de3d",
+    "duration_seconds": 5.1,
+    "budget_remaining": 4.2
+  }
+]
