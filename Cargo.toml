@@ -23,9 +23,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 dashmap = "5.5"
 parking_lot = "0.12"
 async-trait = "0.1"
-axum = { version = "0.7", features = ["ws"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+axum = { version = "0.8", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.7", features = ["cors", "fs", "trace"] }
 git2 = "0.18"
 walkdir = "2.4"
 tempfile = "3.9"
