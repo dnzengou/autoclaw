@@ -1,8 +1,9 @@
 # Autoclaw — Blueprint
 
-> Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local/BitNet.
+> Self-improving AI experiment loop **and** private AI operating system.
+> No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local/BitNet. Six-layer OS on-device.
 
-**Version:** 0.5.0 · **Date:** 2026-08-10 · **License:** MIT
+**Version:** 0.6.0 · **Date:** 2026-08-10 · **License:** MIT
 
 ## Mission
 
@@ -259,6 +260,89 @@ proves itself. Go and Rust ports follow after Python validation.
    - `android.yml` attaches APK to release.
 3. Manual: `pip publish`, `npm publish`, update Homebrew tap with new SHA256.
 
+## Private AI OS — v0.6 (2026-08-10)
+
+Assembles the "Private AI OS" thesis from the top-ROI opportunities strategy: a
+six-layer stack that turns BitNet from an inference engine into an operating
+layer over user data. Nothing new below the runtime layer — every added byte
+runs local, on CPU, stdlib-first.
+
+### Six layers
+
+| Layer | Directory | What it adds |
+|---|---|---|
+| 1 · Runtime | `bitnet/` | (v0.5) LLM inference; `BITNET_URL` env var |
+| 2 · Memory | `memory/` | SQLite personal + session (rolling summary) + org memory |
+| 3 · Knowledge | `rag/` | Embedding model (nomic/bge/e5) + SQLite vector store + ingest/query CLI + HTTP |
+| 4 · Agents | `agents/` | Orchestrator with plan → validate → **approve** → execute → audit; research + ops agents |
+| 5 · Connectors | `connectors/` | Email IMAP (r/o) + web fetch; github via `gh` CLI |
+| 6 · Governance | `agents/policies.yaml` + `agents/audit.py` | Allow/approve/deny rules; JSONL audit sink SIEM-ready |
+
+### ROI crosswalk (from the strategy doc)
+
+| Doc's top-ROI category | Score | Autoclaw feature |
+|---|---|---|
+| 1. Personal & Enterprise AI OS | 10/10 | The whole stack (`autoclaw_os.py`) |
+| 2. Offline AI for Edge Devices | 9.8/10 | `Dockerfile.bitnet` + `Dockerfile.aios` (air-gap via `docker save`); mobile via Tauri |
+| 3. Knowledge Search / RAG / Digital Memory | 9.5/10 | `rag/` + `memory/` |
+| 4. Voice-First AI Agents | 9/10 | `voice/` (v0.5) |
+
+### Unified CLI — `autoclaw_os.py`
+
+```
+autoclaw-os status                        # what's up across all six layers
+autoclaw-os ingest <path>                 # add docs to the RAG store
+autoclaw-os memory add personal K V       # personal / session / org memory
+autoclaw-os research "<question>"         # RAG-cited answer (read-only)
+autoclaw-os ops     "<task>"              # multi-step with approvals
+autoclaw-os chat    "<request>"           # free-form; LLM picks a tool
+autoclaw-os serve                         # start BitNet + RAG + agent HTTP together
+```
+
+### The approval model
+
+`agents/orchestrator.py` runs a five-step loop on every action:
+
+```
+plan (LLM proposes tool + args)
+  → validate (against policies.yaml — deny / approve / auto)
+    → approve (user prompt for approval-bucket tools; auto-approve flag exists for CI)
+      → execute (dispatch through tools.py registry)
+        → audit (append JSONL: agent, tool, args, decision, exit code, sha256(stdout))
+```
+
+Every action, every input, every decision → `~/.autoclaw/audit.jsonl` (or
+`AUTOCLAW_AUDIT_LOG`). SIEM-ready format. Nothing sensitive leaves the machine
+without an explicit `y` prompt or auto-approve flag.
+
+### Files added in v0.6
+
+```
+rag/{models.json,setup.sh,serve.sh,store.py,ingest.py,query.py,server.py,README.md}   # Layer 3
+memory/{schema.sql,manager.py,README.md}                                              # Layer 2
+agents/{policies.yaml,tools.py,audit.py,orchestrator.py,research_agent.py,ops_agent.py,README.md,__init__.py}  # Layer 4 + 6
+connectors/{email_imap.py,web_fetch.py,README.md,__init__.py}                         # Layer 5
+autoclaw_os.py                                                                        # unified CLI
+Dockerfile.aios                                                                       # AI OS edition — all layers baked in
+docs/PRIVATE_AI_OS.md                                                                 # the 6-layer story + ROI crosswalk + industry-fit matrix
+```
+
+### Docker AI OS edition
+
+`Dockerfile.aios` — everything in one image. Runs BitNet on :8081, RAG
+embeddings on :8082, agent HTTP on :8083, dashboard on :8080. Mount `/data`
+for persistent state. Supports `docker save` → USB → air-gap load.
+
+### Business model context (from the strategy doc)
+
+| Segment | Pricing | Shape |
+|---|---|---|
+| Consumer | €10–30/mo | Brew install; user's laptop |
+| SMB | €20–100/user/mo | Docker on office mini-PC or shared VM |
+| Enterprise | €100k–5M annual | Air-gapped Docker + K8s; SIEM; SSO; custom connectors; SLA |
+
+v0.6 ships the technical foundation for all three tiers.
+
 ## BitNet local backend — v0.5 (2026-08-10)
 
 Adds a **fully-offline LLM path** — no cloud, no API keys, no data egress. Wraps
@@ -352,6 +436,29 @@ Not merging PR #31 whole: it also rewrote the dashboard + gutted Cargo deps +
 simplified Rust server — all predating v0.3/v0.4 and would revert shipped work.
 
 ## Changelog
+
+### 0.6.0 — 2026-08-10
+- Private AI OS thesis assembled from the top-ROI opportunities strategy doc.
+- Layer 2 (Memory): `memory/` — SQLite personal + session (rolling summary) +
+  org (versioned) memory. Stdlib only. CLI + Python API.
+- Layer 3 (Knowledge): `rag/` — embedding models (nomic-embed-text-v1.5 /
+  bge-small-en-v1.5 / multilingual-e5-large), SQLite vector store (stdlib +
+  numpy), ingest CLI (txt/md/pdf/docx/code), query CLI with citations, HTTP
+  wrapper. `llama-server --embedding` reuses the BitNet binary.
+- Layer 4 (Agents): `agents/` — orchestrator with plan→validate→**approve**
+  →execute→audit loop, research_agent (RAG-cited), ops_agent (multi-step
+  planner with approval gates), policies.yaml (deny/approve/auto), tools
+  registry, JSONL audit sink SIEM-ready.
+- Layer 5 (Connectors): `connectors/` — email IMAP (read-only), web fetch
+  (stdlib HTML→text, private-IP denylisted). github via `gh` CLI in
+  `agents/tools.py` — no OAuth setup.
+- `autoclaw_os.py` — unified CLI: `status | ingest | research | ops | chat |
+  memory | serve`.
+- `Dockerfile.aios` — Private AI OS edition. All layers baked in. Mount /data
+  for persistent state. Air-gap deployable via `docker save`.
+- `docs/PRIVATE_AI_OS.md` — the 6-layer story, ROI crosswalk from the strategy
+  doc, industry-fit matrix, business-model tiers, roadmap.
+- `install.sh` — `--with-ai-os` flag (extends `--with-bitnet` with RAG model).
 
 ### 0.5.0 — 2026-08-10
 - Local BitNet.cpp backend (`bitnet/` — 1.58-bit inference, no cloud, no keys).

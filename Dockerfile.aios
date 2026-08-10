@@ -1,0 +1,129 @@
+# Dockerfile.aios — Private AI OS edition.
+# All six layers in one image: BitNet + RAG embedding model + memory + agents +
+# connectors + governance. Non-root, tini, healthchecks. Mount /data for
+# persistent state across restarts.
+#
+# Build:
+#   docker build -f Dockerfile.aios -t autoclaw:aios .
+# Run:
+#   docker run --rm -p 8080:8080 -p 8081:8081 -p 8082:8082 -p 8083:8083 \
+#     -v $HOME/aios-data:/data autoclaw:aios
+
+# ─── Stage 1: build BitNet + download models ────────────────────────────────
+FROM python:3.12-slim-bookworm AS models-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git cmake build-essential clang curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone --recursive --depth 1 https://github.com/microsoft/BitNet /build/BitNet
+WORKDIR /build/BitNet
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir -r requirements.txt \
+    && python setup_env.py --hf-repo microsoft/BitNet-b1.58-2B-4T-gguf --quant-type i2_s
+
+# Also download the RAG embedding model
+RUN mkdir -p /build/rag-models \
+    && curl -L --fail -o /build/rag-models/nomic-embed-text-v1.5.Q4_K_M.gguf \
+      https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+
+# ─── Stage 2: build Go agent binary ─────────────────────────────────────────
+FROM golang:1.24-alpine3.24 AS go-builder
+WORKDIR /build
+COPY agent.go evo.go deals.go go.mod ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
+
+# ─── Stage 3: runtime ───────────────────────────────────────────────────────
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 python3-pip python3-numpy ca-certificates curl tini git \
+      poppler-utils libreoffice-common \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r autoclaw && useradd -r -g autoclaw -d /app -s /bin/bash autoclaw
+
+WORKDIR /app
+
+# BitNet binaries
+COPY --from=models-builder /build/BitNet/build/bin/llama-server /usr/local/bin/llama-server
+COPY --from=models-builder /build/BitNet/build/bin/llama-cli /usr/local/bin/llama-cli
+COPY --from=models-builder /build/BitNet/models /app/bitnet-models
+COPY --from=models-builder /build/rag-models /app/rag-models
+
+# Go agent
+COPY --from=go-builder /out/autoclaw /usr/local/bin/autoclaw
+
+# Python code — all layers
+COPY agent.py eval.py train.py dashboard.html context.md rubric.json ./
+COPY bitnet/ /app/bitnet/
+COPY rag/ /app/rag/
+COPY memory/ /app/memory/
+COPY agents/ /app/agents/
+COPY connectors/ /app/connectors/
+COPY voice/ /app/voice/
+COPY autoclaw_os.py ./
+
+# Data volume (memory.sqlite, store.sqlite, audit.jsonl)
+RUN mkdir -p /data /app/rag/models /app/bitnet/models \
+    && ln -sf /app/rag-models/nomic-embed-text-v1.5.Q4_K_M.gguf /app/rag/models/nomic-embed-text-v1.5.Q4_K_M.gguf \
+    && ln -sf /app/bitnet-models/*.gguf /app/bitnet/models/ 2>/dev/null || true \
+    && chown -R autoclaw:autoclaw /app /data
+
+# Entrypoint: start BitNet on 8081, RAG embedding on 8082, agent HTTP on 8083, autoclaw dashboard on 8080
+COPY <<'EOF' /usr/local/bin/entrypoint.sh
+#!/bin/sh
+set -eu
+
+BITNET_MODEL="$(ls /app/bitnet-models/*.gguf 2>/dev/null | head -1)"
+RAG_MODEL="$(ls /app/rag-models/*.gguf 2>/dev/null | head -1)"
+
+[ -n "$BITNET_MODEL" ] || { echo "no BitNet model bundled" >&2; exit 1; }
+[ -n "$RAG_MODEL" ]    || { echo "no RAG embedding model bundled" >&2; exit 1; }
+
+# Symlink data dir → repo state (persistent across restarts)
+mkdir -p /data/memory /data/rag /data/audit
+ln -sf /data/memory/memory.sqlite /app/memory/memory.sqlite
+ln -sf /data/rag/store.sqlite     /app/rag/store.sqlite
+export AUTOCLAW_AUDIT_LOG=/data/audit/audit.jsonl
+
+# 1) BitNet server (LLM)
+llama-server --model "$BITNET_MODEL" --host 0.0.0.0 --port 8081 --ctx-size 2048 &
+BITNET_PID=$!
+
+# 2) RAG embedding server
+llama-server --model "$RAG_MODEL" --host 0.0.0.0 --port 8082 --ctx-size 2048 --embedding &
+RAG_PID=$!
+
+# 3) Agent HTTP wrapper
+python3 /app/rag/server.py --host 0.0.0.0 --port 8083 --db /app/rag/store.sqlite &
+AGENT_PID=$!
+
+sleep 3
+
+export BITNET_URL=http://localhost:8081/v1
+export RAG_URL=http://localhost:8082/v1
+
+# 4) Foreground: Go dashboard agent
+exec autoclaw --port 8080
+EOF
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+USER autoclaw
+
+ENV PORT=8080 \
+    BITNET_URL=http://localhost:8081/v1 \
+    RAG_URL=http://localhost:8082/v1 \
+    AUTOCLAW_WORKSPACE=/app \
+    AUTOCLAW_AUDIT_LOG=/data/audit/audit.jsonl
+
+EXPOSE 8080 8081 8082 8083
+
+VOLUME ["/data"]
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://localhost:8080/api/status > /dev/null && \
+      curl -fsS http://localhost:8081/health     > /dev/null && \
+      curl -fsS http://localhost:8082/health     > /dev/null || exit 1
