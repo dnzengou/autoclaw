@@ -21,7 +21,6 @@ Env:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -117,9 +116,12 @@ def _cmd_serve(args) -> int:
     except KeyboardInterrupt:
         print("\n→ shutting down")
     finally:
+        # Best-effort shutdown; some children may have already exited.
         for p in procs:
-            try: p.terminate()
-            except Exception: pass
+            try:
+                p.terminate()
+            except Exception:
+                pass
     return 0
 
 

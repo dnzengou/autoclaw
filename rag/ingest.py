@@ -159,6 +159,11 @@ def main() -> int:
     root = args.path or args.file
     if not root or not root.exists():
         ap.error("--path or --file must exist")
+    # CLI-supplied path: resolve to canonical form so the ingested doc_path
+    # is stable across relative/symlink variations. Not a security boundary
+    # (the CLI is trusted); the network surface (rag/server.py) enforces
+    # a root allowlist separately.
+    root = root.resolve()
 
     store = Store(args.db)
     files = iter_files(root)

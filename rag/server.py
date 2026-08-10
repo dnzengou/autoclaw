@@ -25,7 +25,29 @@ from query import embed_one  # noqa: E402
 from store import Store  # noqa: E402
 
 DEFAULT_DB = Path(__file__).parent / "store.sqlite"
+DEFAULT_INGEST_ROOT = Path(os.environ.get("RAG_INGEST_ROOT", str(Path.home()))).resolve()
 _ingest_lock = threading.Lock()
+
+
+def _safe_ingest_path(user_input: str, root: Path) -> Path | None:
+    """Reject paths outside the configured ingest root — SSRF/path-traversal guard.
+
+    The HTTP surface must never let a network caller read /etc/shadow or a mounted
+    volume. Everything gets resolved (symlink-follow) then checked to be under
+    RAG_INGEST_ROOT (default: user's home directory).
+    """
+    if not user_input:
+        return None
+    try:
+        candidate = Path(user_input).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    # Path.is_relative_to landed in 3.9; use a portable check.
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    return candidate
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -52,28 +74,33 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/rag/status":
             store = Store(self.server.db_path)
-            return self._send_json(200, {"chunks": store.count(), "db": str(self.server.db_path)})
+            self._send_json(200, {"chunks": store.count(), "db": str(self.server.db_path)})
+            return
         self._send_json(404, {"error": "not found"})
 
     def do_POST(self) -> None:
         body = self._read_body()
         if self.path == "/rag/ingest":
-            p = Path(body.get("path", ""))
-            if not p.exists():
-                return self._send_json(400, {"error": f"path not found: {p}"})
+            p = _safe_ingest_path(body.get("path", ""), self.server.ingest_root)  # type: ignore[attr-defined]
+            if not p:
+                self._send_json(400, {"error": f"path missing / outside allowed root ({self.server.ingest_root})"})  # type: ignore[attr-defined]
+                return
             store = Store(self.server.db_path)
             with _ingest_lock:
                 total = 0
                 for f in iter_files(p):
                     total += ingest_file(store, f, force=bool(body.get("force")))
-            return self._send_json(200, {"chunks_added": total, "total": store.count()})
+            self._send_json(200, {"chunks_added": total, "total": store.count()})
+            return
         if self.path == "/rag/query":
             q = body.get("q", "").strip()
             if not q:
-                return self._send_json(400, {"error": "missing 'q'"})
+                self._send_json(400, {"error": "missing 'q'"})
+                return
             k = int(body.get("k", 5))
             store = Store(self.server.db_path)
-            return self._send_json(200, store.query(embed_one(q), top_k=k))
+            self._send_json(200, store.query(embed_one(q), top_k=k))
+            return
         self._send_json(404, {"error": "not found"})
 
 
@@ -86,7 +113,9 @@ def main() -> int:
 
     srv = HTTPServer((args.host, args.port), Handler)
     srv.db_path = args.db  # type: ignore[attr-defined]
+    srv.ingest_root = DEFAULT_INGEST_ROOT  # type: ignore[attr-defined]
     print(f"[rag] serving on http://{args.host}:{args.port}  db={args.db}")
+    print(f"      ingest root (denies paths outside): {DEFAULT_INGEST_ROOT}")
     print(f"      POST /rag/ingest  POST /rag/query  GET /rag/status")
     srv.serve_forever()
     return 0

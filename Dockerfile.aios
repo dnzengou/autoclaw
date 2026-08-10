@@ -95,7 +95,9 @@ llama-server --model "$RAG_MODEL" --host 0.0.0.0 --port 8082 --ctx-size 2048 --e
 RAG_PID=$!
 
 # 3) Agent HTTP wrapper
-python3 /app/rag/server.py --host 0.0.0.0 --port 8083 --db /app/rag/store.sqlite &
+# RAG_INGEST_ROOT confines POST /rag/ingest to the user-mounted /data volume,
+# preventing a network caller from ingesting arbitrary container paths.
+RAG_INGEST_ROOT=/data python3 /app/rag/server.py --host 0.0.0.0 --port 8083 --db /app/rag/store.sqlite &
 AGENT_PID=$!
 
 sleep 3

@@ -70,8 +70,11 @@ def list_inbox(limit: int = 20) -> list[dict]:
             })
         return out
     finally:
-        try: m.close()
-        except Exception: pass
+        # SELECTed mailbox may not have been established — ignore CLOSE errors.
+        try:
+            m.close()
+        except Exception:
+            pass
         m.logout()
 
 
@@ -94,8 +97,11 @@ def get_message(uid: int) -> dict:
             "body": body[:20000],  # cap
         }
     finally:
-        try: m.close()
-        except Exception: pass
+        # SELECTed mailbox may not have been established — ignore CLOSE errors.
+        try:
+            m.close()
+        except Exception:
+            pass
         m.logout()
 
 
