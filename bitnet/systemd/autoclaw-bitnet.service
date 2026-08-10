@@ -1,0 +1,40 @@
+[Unit]
+Description=Autoclaw BitNet local LLM server
+Documentation=https://github.com/dnzengou/autoclaw
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=autoclaw
+Group=autoclaw
+WorkingDirectory=/opt/autoclaw
+ExecStart=/opt/autoclaw/bitnet/serve.sh
+Restart=on-failure
+RestartSec=5s
+
+# Environment
+Environment="BITNET_PORT=8081"
+Environment="BITNET_CTX=2048"
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/autoclaw/bitnet/models /var/log/autoclaw
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=false  # llama.cpp uses JIT
+CapabilityBoundingSet=
+
+# Resource limits
+LimitNOFILE=4096
+MemoryMax=8G
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,35 @@
+{
+  "default": "bitnet-b1.58-2B-4T",
+  "models": {
+    "bitnet-b1.58-2B-4T": {
+      "hf_repo": "microsoft/BitNet-b1.58-2B-4T-gguf",
+      "filename": "ggml-model-i2_s.gguf",
+      "url": "https://huggingface.co/microsoft/BitNet-b1.58-2B-4T-gguf/resolve/main/ggml-model-i2_s.gguf",
+      "size_bytes": 833867072,
+      "params_b": 2.0,
+      "quant": "i2_s",
+      "ctx_max": 4096,
+      "notes": "Native 1.58-bit training on 4T tokens. Default."
+    },
+    "llama3-8b-1.58bit": {
+      "hf_repo": "HF1BitLLM/Llama3-8B-1.58-100B-tokens",
+      "filename": "Llama3-8B-1.58-100B-tokens-TQ2_0.gguf",
+      "url": "https://huggingface.co/HF1BitLLM/Llama3-8B-1.58-100B-tokens/resolve/main/Llama3-8B-1.58-100B-tokens-TQ2_0.gguf",
+      "size_bytes": 3400000000,
+      "params_b": 8.0,
+      "quant": "tq2_0",
+      "ctx_max": 8192,
+      "notes": "Post-quantized Llama-3. Higher quality; more RAM."
+    },
+    "falcon3-7b-1.58bit": {
+      "hf_repo": "tiiuae/Falcon3-7B-Instruct-1.58bit-GGUF",
+      "filename": "Falcon3-7B-Instruct-1.58bit-q2_k.gguf",
+      "url": "https://huggingface.co/tiiuae/Falcon3-7B-Instruct-1.58bit-GGUF/resolve/main/Falcon3-7B-Instruct-1.58bit-q2_k.gguf",
+      "size_bytes": 2900000000,
+      "params_b": 7.0,
+      "quant": "q2_k",
+      "ctx_max": 8192,
+      "notes": "Multilingual. Instruct-tuned."
+    }
+  }
+}

@@ -1,8 +1,8 @@
 # Autoclaw — Blueprint
 
-> Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local.
+> Self-improving AI experiment loop. No-code. Karpathy-pattern. Claude/GPT/DeepSeek/local/BitNet.
 
-**Version:** 0.4.0 · **Date:** 2026-07-24 · **License:** MIT
+**Version:** 0.5.0 · **Date:** 2026-08-10 · **License:** MIT
 
 ## Mission
 
@@ -27,6 +27,8 @@ commits improvements, reverts regressions. Loop until budget exhausted.
 | **Fly.io** | one-click deploy | `fly launch` | ✅ existing |
 | **Railway** | one-click deploy | Deploy button | ✅ existing |
 | **Render** | one-click deploy | Blueprint button | ✅ existing |
+| **Docker (BitNet edition)** | privacy / air-gapped / regulated | `docker build -f Dockerfile.bitnet -t autoclaw:bitnet .` | ✅ v0.5 |
+| **Voice agent (offline)** | kiosk / field ops / accessibility | `./voice/setup.sh && ./voice/ask.sh` | ✅ v0.5 |
 
 ## File manifest — new in v0.1.0
 
@@ -257,7 +259,116 @@ proves itself. Go and Rust ports follow after Python validation.
    - `android.yml` attaches APK to release.
 3. Manual: `pip publish`, `npm publish`, update Homebrew tap with new SHA256.
 
+## BitNet local backend — v0.5 (2026-08-10)
+
+Adds a **fully-offline LLM path** — no cloud, no API keys, no data egress. Wraps
+Microsoft's [BitNet.cpp](https://github.com/microsoft/BitNet) (1.58-bit ternary
+inference) as a drop-in local backend for `agent.py::call_llm()`.
+
+### The privacy path
+
+Backend precedence in `call_llm()` now:
+1. `BITNET_URL` → local BitNet server (this feature)
+2. `LOCAL_LLM_URL` → any OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)
+3. `ANTHROPIC_API_KEY` → Claude
+4. `OPENAI_API_KEY` → GPT
+5. Heuristic fallback (no keys, no server)
+
+Setting `BITNET_URL=http://localhost:8081/v1` routes every hypothesis / critique /
+refinement call through the local model. Nothing leaves the machine.
+
+### Voice agent
+
+`voice/` bundles whisper.cpp (STT) + BitNet (reasoning) + Piper (TTS) into a
+fully-offline voice pipeline: `voice/ask.sh` for one-shot, `voice/agent.py
+--continuous` for a listening loop. Latency ~2–4 s/turn on a laptop CPU.
+
+### Low-hanging-fruit use cases
+
+The privacy backend unlocks markets the cloud path can't serve: HR/legal/health
+document Q&A (GDPR/HIPAA), field-ops voice assistants (offline), air-gapped SOC
+enrichment, kiosk assistants, and autoclaw experiment loops for regulated ML. See
+[docs/BITNET.md](docs/BITNET.md) for the full matrix.
+
+### Install channels
+
+| Channel | Command | Notes |
+|---|---|---|
+| Homebrew | `brew install autoclaw && autoclaw install-bitnet` | macOS/Linux |
+| Scoop | `scoop install autoclaw && autoclaw install-bitnet` | Windows |
+| .deb | `dpkg -i autoclaw_amd64.deb && autoclaw install-bitnet` | Debian/Ubuntu |
+| curl-pipe | `curl … install.sh \| sh -s -- --with-bitnet` | Anywhere |
+| Docker | `docker build -f Dockerfile.bitnet -t autoclaw:bitnet .` | Model baked in, ~2 GB |
+| Termux | `./bitnet/setup.sh` inside Termux | Android on-device |
+
+### Service units
+
+- `bitnet/systemd/autoclaw-bitnet.service` — Linux (hardened: NoNewPrivileges, ProtectSystem, MemoryMax=8G)
+- `bitnet/launchd/dev.autoclaw.bitnet.plist` — macOS
+- `bitnet/windows/install-service.ps1` — Windows via NSSM
+
+### Files added
+
+```
+bitnet/
+├── README.md                # quick start
+├── models.json              # 3 model variants (2B / 7B / 8B) with SHA256 sums
+├── setup.sh / setup.ps1     # clone, cmake build, download model
+├── serve.sh / serve.ps1     # llama-server on :8081 (OpenAI-compatible)
+├── benchmark.sh             # tok/s sanity check
+├── systemd/
+├── launchd/
+└── windows/
+voice/
+├── README.md
+├── models.json              # whisper tiny.en + piper en_US-amy
+├── setup.sh                 # whisper.cpp + piper + models
+├── ask.sh                   # one-shot voice turn
+└── agent.py                 # continuous mode + CLI
+docs/
+└── BITNET.md                # install matrix + use case matrix + ops runbook
+Dockerfile.bitnet            # privacy edition (autoclaw + BitNet + model)
+```
+
+## Evolutionary strategy + deals pipeline — v0.4.1 (2026-08-10)
+
+Cherry-picked from PR #31 (evometaclaw). Two novel Go modules that compose with
+the v0.4 refinement loop without touching it.
+
+- **`evo.go`** — EvoEngine: population of `SkillGenome` structs competing via
+  replicator dynamics (softmax at temperature 0.25, EMA fitness at 0.8 weight).
+  Seeded with 5 exploration niches (hyperparameters, regularization, architecture,
+  data, exploration). Circuit breaker injects diversity when population stagnates
+  more than 8 experiments. Trajectories persisted to `.autoclaw/evo/*.jsonl`.
+  Stdlib only.
+- **`deals.go`** — DealsEngine: prospect → qualify → propose → **human approval** →
+  deliver → paid. Every outbound action gated on explicit human transition. 6
+  toolbox items seeded (Clow, SAI Agency, MOOC Studio, ProductizeYou, Funding
+  Dashboard, CAS Lab). State in `.autoclaw/deals.json`. Stdlib only.
+- **`go.mod`** — bare module so local `go build` works without the Dockerfile's
+  `go mod init` step.
+
+Not merging PR #31 whole: it also rewrote the dashboard + gutted Cargo deps +
+simplified Rust server — all predating v0.3/v0.4 and would revert shipped work.
+
 ## Changelog
+
+### 0.5.0 — 2026-08-10
+- Local BitNet.cpp backend (`bitnet/` — 1.58-bit inference, no cloud, no keys).
+- Voice agent (`voice/` — whisper.cpp + BitNet + Piper, offline pipeline).
+- `agent.py::call_llm()` new `BITNET_URL` + `LOCAL_LLM_URL` precedence; new
+  `_call_openai_compat()` helper (OpenAI-compatible drop-in).
+- `Dockerfile.bitnet` privacy edition with model baked in.
+- Service units: systemd (hardened), launchd, NSSM.
+- `docs/BITNET.md` — install matrix (macOS/Windows/Linux/Docker/Android/iOS),
+  10 low-hanging-fruit use cases, ops runbook.
+- Branch cleanup: merged 9 safe dependabot PRs; closed 8 stale/major-version PRs;
+  cherry-picked evo.go + deals.go from #31 as PR #34.
+
+### 0.4.1 — 2026-08-10
+- Cherry-picked `evo.go` (EvoEngine — replicator dynamics + circuit breaker) and
+  `deals.go` (DealsEngine — human-approval-gated pipeline) from PR #31, plus
+  `go.mod`. See "Evolutionary strategy + deals pipeline" above.
 
 ### 0.4.0 — 2026-07-24
 - Iterative refinement loop (Python prototype in `agent.py`): after each fresh hypothesis,

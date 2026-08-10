@@ -53,3 +53,11 @@ dist/
 build/
 *.bak
 *.backup
+
+# BitNet + voice — cloned upstreams + downloaded models (large, regeneratable)
+bitnet/vendor/
+bitnet/models/
+voice/vendor/
+voice/models/
+*.gguf
+*.onnx

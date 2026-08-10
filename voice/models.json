@@ -1,0 +1,25 @@
+{
+  "whisper": {
+    "default": "tiny.en",
+    "variants": {
+      "tiny.en":  { "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin",  "size_bytes": 77704416 },
+      "base.en":  { "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",  "size_bytes": 147966632 },
+      "small.en": { "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin", "size_bytes": 487601967 }
+    }
+  },
+  "piper": {
+    "default": "en_US-amy-medium",
+    "variants": {
+      "en_US-amy-medium": {
+        "onnx":  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx",
+        "json":  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json",
+        "size_bytes": 63008128
+      },
+      "en_GB-alan-medium": {
+        "onnx":  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx",
+        "json":  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json",
+        "size_bytes": 63008128
+      }
+    }
+  }
+}
