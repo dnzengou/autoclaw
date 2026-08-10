@@ -56,20 +56,56 @@ best_score = 0.0
 def call_llm(prompt, model="claude-3-opus"):
     """Call an LLM API to generate hypotheses.
 
-    Supports: Claude (Anthropic), GPT (OpenAI), or local models.
-    Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or LOCAL_LLM_URL env vars.
+    Backend precedence (first match wins):
+      1. BITNET_URL          — microsoft/BitNet local server (privacy path)
+      2. LOCAL_LLM_URL       — any OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)
+      3. ANTHROPIC_API_KEY   — Claude
+      4. OPENAI_API_KEY      — GPT
+      5. Heuristic fallback  — no keys, no server
 
-    Falls back to a heuristic hypothesis generator if no API key is available.
+    All non-heuristic backends return raw text; the fallback returns a JSON
+    string so the downstream parser can treat call_llm() as text uniformly.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    bitnet_url = os.environ.get("BITNET_URL")
+    local_url = os.environ.get("LOCAL_LLM_URL")
 
-    if api_key and os.environ.get("ANTHROPIC_API_KEY"):
+    if bitnet_url:
+        return _call_openai_compat(bitnet_url, api_key=None, prompt=prompt, model="bitnet", backend="bitnet")
+    if local_url:
+        return _call_openai_compat(local_url, api_key=os.environ.get("LOCAL_LLM_KEY"), prompt=prompt, model=model, backend="local")
+    if os.environ.get("ANTHROPIC_API_KEY"):
         return _call_claude(prompt, model)
-    elif api_key and os.environ.get("OPENAI_API_KEY"):
+    if os.environ.get("OPENAI_API_KEY"):
         return _call_openai(prompt, model)
-    else:
-        # Fallback always returns a JSON string so downstream parsers
-        # can treat call_llm() as text uniformly.
+    return json.dumps(_fallback_hypotheses())
+
+
+def _call_openai_compat(base_url, api_key, prompt, model, backend):
+    """Call any OpenAI-compatible /v1/chat/completions endpoint.
+
+    Used for BitNet (llama-server) and generic local backends (LM Studio, Ollama,
+    vLLM). Base URL should include the /v1 prefix.
+    """
+    import urllib.request
+
+    url = base_url.rstrip("/") + "/chat/completions"
+    data = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 2000,
+        "temperature": 0.3,
+    }).encode()
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers), timeout=120) as resp:
+            body = json.loads(resp.read())
+            return body["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"[agent] {backend} backend error at {url}: {e}", file=sys.stderr)
         return json.dumps(_fallback_hypotheses())
 
 

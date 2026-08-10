@@ -1,0 +1,86 @@
+# Dockerfile.bitnet — privacy edition.
+# Bundles autoclaw + microsoft/BitNet + default 2B model in one image.
+# Runs offline after build. Non-root user. Multi-stage for small final image.
+#
+# Build:
+#   docker build -f Dockerfile.bitnet -t autoclaw:bitnet .
+# Run:
+#   docker run --rm -p 8080:8080 -p 8081:8081 autoclaw:bitnet
+
+# ─── Stage 1: build BitNet ──────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS bitnet-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git cmake build-essential clang curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone --recursive --depth 1 https://github.com/microsoft/BitNet /build/BitNet
+WORKDIR /build/BitNet
+
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir -r requirements.txt \
+    && python setup_env.py --hf-repo microsoft/BitNet-b1.58-2B-4T-gguf --quant-type i2_s
+
+# ─── Stage 2: build autoclaw Go binary ──────────────────────────────────────
+FROM golang:1.24-alpine3.24 AS go-builder
+WORKDIR /build
+COPY agent.go evo.go deals.go go.mod ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
+
+# ─── Stage 3: runtime ───────────────────────────────────────────────────────
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 python3-pip ca-certificates curl tini git \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r autoclaw && useradd -r -g autoclaw -d /app -s /bin/bash autoclaw
+
+WORKDIR /app
+
+# autoclaw agent + Python
+COPY --from=go-builder /out/autoclaw /usr/local/bin/autoclaw
+COPY agent.py eval.py train.py dashboard.html context.md rubric.json ./
+COPY voice/agent.py ./voice-agent.py
+COPY bitnet/models.json ./bitnet-models.json
+
+# BitNet binaries + downloaded model
+COPY --from=bitnet-builder /build/BitNet/build/bin/llama-server /usr/local/bin/llama-server
+COPY --from=bitnet-builder /build/BitNet/build/bin/llama-cli /usr/local/bin/llama-cli
+COPY --from=bitnet-builder /build/BitNet/models /app/models
+
+# entrypoint script: start BitNet server then autoclaw
+COPY <<'EOF' /usr/local/bin/entrypoint.sh
+#!/bin/sh
+set -eu
+MODEL_FILE="$(ls /app/models/*.gguf 2>/dev/null | head -1)"
+[ -n "$MODEL_FILE" ] || { echo "no .gguf model bundled" >&2; exit 1; }
+
+# BitNet server in background
+llama-server --model "$MODEL_FILE" --host 0.0.0.0 --port 8081 --ctx-size 2048 &
+BITNET_PID=$!
+
+# Wait a moment for it to bind
+sleep 2
+
+# Point autoclaw at local BitNet
+export BITNET_URL=http://localhost:8081/v1
+
+# Foreground: autoclaw HTTP server
+exec autoclaw --port 8080
+EOF
+
+RUN chmod +x /usr/local/bin/entrypoint.sh && chown -R autoclaw:autoclaw /app
+
+USER autoclaw
+
+ENV PORT=8080 \
+    BITNET_PORT=8081 \
+    AUTOCLAW_WORKSPACE=/app
+
+EXPOSE 8080 8081
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -fsS http://localhost:8080/api/status > /dev/null && \
+      curl -fsS http://localhost:8081/health > /dev/null || exit 1

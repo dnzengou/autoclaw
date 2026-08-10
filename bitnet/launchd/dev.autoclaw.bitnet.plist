@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.autoclaw.bitnet</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/opt/autoclaw/bitnet/serve.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/usr/local/opt/autoclaw</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/autoclaw/bitnet.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/autoclaw/bitnet.err</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>BITNET_PORT</key>
+        <string>8081</string>
+        <key>BITNET_CTX</key>
+        <string>2048</string>
+    </dict>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>4096</integer>
+    </dict>
+</dict>
+</plist>

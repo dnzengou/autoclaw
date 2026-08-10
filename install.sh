@@ -74,4 +74,22 @@ fi
 
 log "Installed: $target_path"
 "$target_path" --version 2>/dev/null || true
+
+# ─── Optional: BitNet local LLM backend ─────────────────────────────────────
+# curl -fsSL autoclaw.dev/install.sh | sh -s -- --with-bitnet
+for arg in "$@"; do
+  case "$arg" in
+    --with-bitnet)
+      log "Fetching BitNet setup script"
+      workdir="${AUTOCLAW_WORKSPACE:-$HOME/.autoclaw}"
+      mkdir -p "$workdir"
+      curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/bitnet/setup.sh" -o "$workdir/bitnet-setup.sh"
+      chmod +x "$workdir/bitnet-setup.sh"
+      log "Running BitNet setup (clone + build + download ~800 MB) in $workdir"
+      (cd "$workdir" && ./bitnet-setup.sh) || die "BitNet setup failed"
+      log "BitNet ready. To use: export BITNET_URL=http://localhost:8081/v1 && ./bitnet-serve.sh"
+      ;;
+  esac
+done
+
 log "Next: autoclaw init my-project"
