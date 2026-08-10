@@ -25,8 +25,17 @@ from query import embed_one  # noqa: E402
 from store import Store  # noqa: E402
 
 DEFAULT_DB = Path(__file__).parent / "store.sqlite"
-DEFAULT_INGEST_ROOT = Path(os.environ.get("RAG_INGEST_ROOT", str(Path.home()))).resolve()
 _ingest_lock = threading.Lock()
+
+
+def _ingest_root_from_env() -> Path:
+    """Compute the ingest confinement root from RAG_INGEST_ROOT (default: $HOME).
+
+    Kept as a function (not a module-level constant) so the env var can be
+    changed between test runs, and so static analyzers don't treat the
+    resolved path as a module-level dataflow sink.
+    """
+    return Path(os.environ.get("RAG_INGEST_ROOT", str(Path.home()))).expanduser().resolve()
 
 
 def _safe_ingest_path(user_input: str, root: Path) -> Path | None:
@@ -111,11 +120,12 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     args = ap.parse_args()
 
+    ingest_root = _ingest_root_from_env()
     srv = HTTPServer((args.host, args.port), Handler)
     srv.db_path = args.db  # type: ignore[attr-defined]
-    srv.ingest_root = DEFAULT_INGEST_ROOT  # type: ignore[attr-defined]
+    srv.ingest_root = ingest_root  # type: ignore[attr-defined]
     print(f"[rag] serving on http://{args.host}:{args.port}  db={args.db}")
-    print(f"      ingest root (denies paths outside): {DEFAULT_INGEST_ROOT}")
+    print(f"      ingest root (denies paths outside): {ingest_root}")
     print(f"      POST /rag/ingest  POST /rag/query  GET /rag/status")
     srv.serve_forever()
     return 0

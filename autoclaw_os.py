@@ -116,11 +116,11 @@ def _cmd_serve(args) -> int:
     except KeyboardInterrupt:
         print("\n→ shutting down")
     finally:
-        # Best-effort shutdown; some children may have already exited.
         for p in procs:
             try:
                 p.terminate()
             except Exception:
+                # Child may have already exited; nothing to signal — swallow.
                 pass
     return 0
 

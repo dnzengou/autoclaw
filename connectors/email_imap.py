@@ -70,10 +70,10 @@ def list_inbox(limit: int = 20) -> list[dict]:
             })
         return out
     finally:
-        # SELECTed mailbox may not have been established — ignore CLOSE errors.
         try:
             m.close()
         except Exception:
+            # SELECTed mailbox may not have been established on error path — swallow.
             pass
         m.logout()
 
@@ -97,10 +97,10 @@ def get_message(uid: int) -> dict:
             "body": body[:20000],  # cap
         }
     finally:
-        # SELECTed mailbox may not have been established — ignore CLOSE errors.
         try:
             m.close()
         except Exception:
+            # SELECTed mailbox may not have been established on error path — swallow.
             pass
         m.logout()
 
