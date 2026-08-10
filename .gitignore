@@ -61,3 +61,12 @@ voice/vendor/
 voice/models/
 *.gguf
 *.onnx
+
+# AI OS runtime state (v0.6)
+rag/models/
+rag/store.sqlite
+memory/memory.sqlite
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+.autoclaw/

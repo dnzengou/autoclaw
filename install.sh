@@ -89,6 +89,22 @@ for arg in "$@"; do
       (cd "$workdir" && ./bitnet-setup.sh) || die "BitNet setup failed"
       log "BitNet ready. To use: export BITNET_URL=http://localhost:8081/v1 && ./bitnet-serve.sh"
       ;;
+    --with-ai-os)
+      log "Fetching Private AI OS setup (BitNet + RAG embedding model)"
+      workdir="${AUTOCLAW_WORKSPACE:-$HOME/.autoclaw}"
+      mkdir -p "$workdir"
+      curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/bitnet/setup.sh" -o "$workdir/bitnet-setup.sh"
+      curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/rag/setup.sh"    -o "$workdir/rag-setup.sh"
+      curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/rag/models.json" -o "$workdir/rag-models.json"
+      chmod +x "$workdir/bitnet-setup.sh" "$workdir/rag-setup.sh"
+      log "Running BitNet setup (~800 MB)"
+      (cd "$workdir" && ./bitnet-setup.sh)                     || die "BitNet setup failed"
+      log "Running RAG setup (~90 MB embedding model)"
+      (cd "$workdir" && ./rag-setup.sh)                        || die "RAG setup failed"
+      log "AI OS ready. Bring up all layers with:"
+      log "  autoclaw-os serve"
+      log "Or: ./bitnet/serve.sh & ./rag/serve.sh &"
+      ;;
   esac
 done
 

@@ -1,0 +1,56 @@
+# agents/policies.yaml — action allow/approve/deny rules.
+#
+# Categories (checked in order): deny → approval → auto → default_deny.
+# Per-tool arg constraints can override; unmatched tools fall through to default.
+version: 1
+
+default: approval   # unknown tools require approval by default
+
+auto:
+  # Read-only or fully local — no user prompt.
+  - rag.query
+  - rag.status
+  - memory.get
+  - memory.list
+  - memory.session_add
+  - memory.session_context
+  - web.fetch          # capped by web.fetch arg constraints below
+  - email.list_inbox
+  - email.get_message
+  - github.list_issues
+  - github.list_pulls
+  - github.get_issue
+  - shell.ls
+  - shell.cat
+
+approval:
+  # Write / send / commit — always prompt user.
+  - email.send
+  - email.reply
+  - github.create_issue
+  - github.create_pr
+  - github.comment
+  - github.merge_pr
+  - files.write
+  - files.delete
+  - shell.exec
+
+deny:
+  # Never, under any circumstance.
+  - shell.rm_rf
+  - shell.dd
+  - shell.mkfs
+  - shell.forkbomb
+
+# Per-tool arg patterns.
+# The value can be a regex to match a stringified arg; negative match denies.
+constraints:
+  web.fetch:
+    url_deny_patterns:
+      - "^https?://(127\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)"  # private ranges
+      - "^https?://localhost"
+      - "^https?://.*\\.local"
+      - "^file://"
+      - "^gopher://"
+  email.send:
+    require_domains_allowlist: false   # set true and provide list in ops config
