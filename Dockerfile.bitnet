@@ -23,7 +23,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
     && python setup_env.py --hf-repo microsoft/BitNet-b1.58-2B-4T-gguf --quant-type i2_s
 
 # ─── Stage 2: build autoclaw Go binary ──────────────────────────────────────
-FROM golang:1.24-alpine3.24 AS go-builder
+FROM golang:1.26-alpine3.24 AS go-builder
 WORKDIR /build
 COPY agent.go evo.go deals.go go.mod ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
