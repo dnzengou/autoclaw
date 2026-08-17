@@ -10,7 +10,7 @@
 #     -v $HOME/aios-data:/data autoclaw:aios
 
 # ─── Stage 1: build BitNet + download models ────────────────────────────────
-FROM python:3.12-slim-bookworm AS models-builder
+FROM python:3.14-slim-bookworm AS models-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git cmake build-essential clang curl ca-certificates \
