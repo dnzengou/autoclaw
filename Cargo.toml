@@ -31,14 +31,14 @@ walkdir = "2.4"
 tempfile = "3.9"
 regex = "1.10"
 handlebars = "6.4"
-notify = "6.1"
+notify = "8.2"
 crossbeam = "0.8"
 metrics = "0.24"
 metrics-exporter-prometheus = "0.18"
 
 [dev-dependencies]
 tokio-test = "0.4"
-mockall = "0.12"
+mockall = "0.15"
 criterion = "0.8"
 
 [[bench]]
