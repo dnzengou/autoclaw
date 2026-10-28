@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autoclaw — Self-improving AI experiment loop</title>
-<meta name="description" content="Karpathy-pattern automation. Human edits context.md, AI edits code, every experiment is a git commit. Rust + Go + Python + APK. 14 install channels.">
+<meta name="description" content="Karpathy-pattern automation. Human edits context.md, AI edits code, every experiment is a git commit. Evolving strategy genomes learn which directions pay off. Rust + Go + Python + APK. 14 install channels.">
 <link rel="canonical" href="https://autoclaw.dev/">
 
 <!-- Open Graph -->
@@ -35,7 +35,7 @@
       "url": "https://autoclaw.dev/",
       "description": "No-code self-improving automation loop for Claude Cowork. Karpathy-pattern. 14 install channels.",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-      "softwareVersion": "0.1.0",
+      "softwareVersion": "0.7.0",
       "license": "https://opensource.org/licenses/MIT",
       "publisher": { "@id": "https://autoclaw.dev/#org" },
       "sameAs": [
@@ -165,6 +165,8 @@ section .lede { color: var(--muted); margin-bottom: 32px; max-width: 720px; }
 .loop .node .ico { font-size: 24px; display: block; margin-bottom: 6px; }
 .loop .node strong { display: block; }
 @media (max-width: 720px) { .loop { grid-template-columns: repeat(2, 1fr); } }
+.channels.evo-ops { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+@media (max-width: 720px) { .channels.evo-ops { grid-template-columns: minmax(0, 1fr); } }
 
 /* Install grid */
 .channels {
@@ -235,6 +237,7 @@ footer .links a { margin: 0 10px; }
     <nav>
       <a href="/demo" class="plausible-event-name=nav_demo">Demo</a>
       <a href="#how">How</a>
+      <a href="#evolve">Evolve</a>
       <a href="#install">Install</a>
       <a href="#pricing">Pricing</a>
       <a href="https://github.com/dnzengou/autoclaw" target="_blank" rel="noopener" class="plausible-event-name=github_click">GitHub</a>
@@ -276,9 +279,49 @@ footer .links a { margin: 0 10px; }
   </div>
 </section>
 
+<section id="evolve">
+  <div class="wrap">
+    <h2><span class="num">02</span>It evolves its own strategy</h2>
+    <p class="lede">
+      <b>EvoMetaClaw</b> keeps a population of strategy genomes (learning-rate tuner, regularizer, architect, data-shaper, radical).
+      Each round, the loop picks one and steers the AI's hypotheses with it. The genomes that produce wins get chosen more often.
+      <b>EvoSkillOps</b> handles what happens to a strategy over its lifetime: crossing proven ones, retiring dead ones, and moving them between projects.
+    </p>
+    <div class="loop">
+      <div class="node"><span class="ico">🎯</span><strong>Select</strong>Softmax over fitness</div>
+      <div class="node"><span class="ico">💉</span><strong>Inject</strong>Strategy + prior wins</div>
+      <div class="node"><span class="ico">📈</span><strong>Record</strong>Fitness learns from score</div>
+      <div class="node"><span class="ico">🧬</span><strong>Spawn</strong>Wins become genomes</div>
+      <div class="node"><span class="ico">⚡</span><strong>Break</strong>Stagnation → mutants</div>
+    </div>
+    <div class="channels evo-ops">
+      <div class="channel">
+        <h3>🔀 Crossover <span class="badge">SkillOps</span></h3>
+        <div class="audience">Two winning genomes from different niches combine into a hybrid that tries both ideas at once.</div>
+      </div>
+      <div class="channel">
+        <h3>🪦 Prune <span class="badge">SkillOps</span></h3>
+        <div class="audience">Evolved genomes with 6+ plays, no wins, and decaying fitness retire. Seed genomes always stay.</div>
+      </div>
+      <div class="channel">
+        <h3>📦 Skill packs <span class="badge">SkillOps</span></h3>
+        <div class="audience">Export proven genomes from one project and import them into another. Duplicates merge their memories instead of piling up.</div>
+        <pre>curl :8080/api/evo/skills &gt; pack.json
+curl -XPOST :8080/api/evo/skills -d @pack.json</pre>
+      </div>
+      <div class="channel">
+        <h3>🌳 Lineage <span class="badge">API</span></h3>
+        <div class="audience">Trace any genome back to the seed it came from. Every outcome is logged to <code>.autoclaw/evo/trajectories.jsonl</code>.</div>
+        <pre>GET /api/evo/status
+GET /api/evo/lineage?id=evo-0007</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="install">
   <div class="wrap">
-    <h2><span class="num">02</span>14 install channels</h2>
+    <h2><span class="num">03</span>14 install channels</h2>
     <p class="lede">Use the channel that matches your stack. Every release ships everywhere at once.</p>
     <div class="channels">
 
@@ -373,7 +416,7 @@ footer .links a { margin: 0 10px; }
 
 <section id="pricing">
   <div class="wrap">
-    <h2><span class="num">03</span>Free forever. Pro for teams.</h2>
+    <h2><span class="num">04</span>Free forever. Pro for teams.</h2>
     <p class="lede">Self-host the loop on your own metal at zero cost. Pro unlocks managed runs, shared dashboards, and Claude/GPT/DeepSeek key pooling.</p>
     <div class="tiers">
 
@@ -449,7 +492,7 @@ footer .links a { margin: 0 10px; }
       ·
       <a href="https://www.linkedin.com/in/dnzengou" target="_blank" rel="noopener">LinkedIn</a>
     </div>
-    <div>© 2026 Desired Solutions · MIT · Built with Karpathy's autoresearch pattern · v0.1.0</div>
+    <div>© 2026 Desired Solutions · MIT · Built with Karpathy's autoresearch pattern · v0.7.0</div>
   </div>
 </footer>
 
