@@ -42,28 +42,29 @@ import (
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 type Config struct {
-	Budget     int    // Total experiment budget in seconds
-	Model      string // LLM model name
-	Hypotheses int    // Hypotheses per iteration
-	Port       int    // Dashboard HTTP port
-	RubricPath string // Path to rubric JSON
+	Budget      int    // Total experiment budget in seconds
+	Model       string // LLM model name
+	Hypotheses  int    // Hypotheses per iteration
+	Port        int    // Dashboard HTTP port
+	RubricPath  string // Path to rubric JSON
 	NoDashboard bool
-	WorkDir    string // Working directory
+	WorkDir     string // Working directory
 }
 
 // ─── Data Model ─────────────────────────────────────────────────────────────
 
 type Experiment struct {
-	ID              string            `json:"id"`
-	Hypothesis      string            `json:"hypothesis"`
-	Params          map[string]any    `json:"params"`
-	Metrics         map[string]any    `json:"metrics"`
-	Score           float64           `json:"score"`
-	Status          string            `json:"status"`
-	Timestamp       string            `json:"timestamp"`
-	GitHash         string            `json:"git_hash"`
-	DurationSeconds float64           `json:"duration_seconds"`
-	BudgetRemaining float64           `json:"budget_remaining,omitempty"`
+	ID              string         `json:"id"`
+	Hypothesis      string         `json:"hypothesis"`
+	Params          map[string]any `json:"params"`
+	Metrics         map[string]any `json:"metrics"`
+	Score           float64        `json:"score"`
+	Status          string         `json:"status"`
+	Timestamp       string         `json:"timestamp"`
+	GitHash         string         `json:"git_hash"`
+	DurationSeconds float64        `json:"duration_seconds"`
+	BudgetRemaining float64        `json:"budget_remaining,omitempty"`
+	GenomeID        string         `json:"genome_id,omitempty"` // EvoMetaClaw strategy that produced it
 }
 
 type Rubric struct {
@@ -77,27 +78,28 @@ type Rubric struct {
 }
 
 type Status struct {
-	Running         bool    `json:"running"`
-	TotalExperiments int    `json:"total_experiments"`
-	BestScore       float64 `json:"best_score"`
-	BudgetRemaining float64 `json:"budget_remaining"`
-	Uptime          float64 `json:"uptime"`
+	Running          bool    `json:"running"`
+	TotalExperiments int     `json:"total_experiments"`
+	BestScore        float64 `json:"best_score"`
+	BudgetRemaining  float64 `json:"budget_remaining"`
+	Uptime           float64 `json:"uptime"`
 }
 
 // ─── Global State ───────────────────────────────────────────────────────────
 
 var (
-	cfg          Config
-	experiments  []Experiment
-	experimentsMu sync.RWMutex
-	bestScore    float64
-	nextExpID    int
+	cfg             Config
+	experiments     []Experiment
+	experimentsMu   sync.RWMutex
+	bestScore       float64
+	nextExpID       int
 	budgetRemaining float64
-	loopStartTime time.Time
-	running      bool
-	stopCh       chan struct{}
-	sseClients   []chan Experiment
-	sseMu        sync.Mutex
+	loopStartTime   time.Time
+	running         bool
+	stopCh          chan struct{}
+	sseClients      []chan Experiment
+	sseMu           sync.Mutex
+	evo             *EvoEngine
 )
 
 // ─── Main ───────────────────────────────────────────────────────────────────
@@ -119,19 +121,37 @@ func main() {
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "--budget":
-			if i+1 < len(os.Args) { cfg.Budget = atoi(os.Args[i+1]); i++ }
+			if i+1 < len(os.Args) {
+				cfg.Budget = atoi(os.Args[i+1])
+				i++
+			}
 		case "--model":
-			if i+1 < len(os.Args) { cfg.Model = os.Args[i+1]; i++ }
+			if i+1 < len(os.Args) {
+				cfg.Model = os.Args[i+1]
+				i++
+			}
 		case "--hypotheses":
-			if i+1 < len(os.Args) { cfg.Hypotheses = atoi(os.Args[i+1]); i++ }
+			if i+1 < len(os.Args) {
+				cfg.Hypotheses = atoi(os.Args[i+1])
+				i++
+			}
 		case "--port":
-			if i+1 < len(os.Args) { cfg.Port = atoi(os.Args[i+1]); i++ }
+			if i+1 < len(os.Args) {
+				cfg.Port = atoi(os.Args[i+1])
+				i++
+			}
 		case "--rubric":
-			if i+1 < len(os.Args) { cfg.RubricPath = os.Args[i+1]; i++ }
+			if i+1 < len(os.Args) {
+				cfg.RubricPath = os.Args[i+1]
+				i++
+			}
 		case "--no-dashboard":
 			cfg.NoDashboard = true
 		case "--work-dir":
-			if i+1 < len(os.Args) { cfg.WorkDir = os.Args[i+1]; i++ }
+			if i+1 < len(os.Args) {
+				cfg.WorkDir = os.Args[i+1]
+				i++
+			}
 		}
 	}
 
@@ -140,6 +160,10 @@ func main() {
 
 	// Load existing results
 	loadResults()
+
+	// EvoMetaClaw: strategy population persisted under .autoclaw/evo/
+	evo = NewEvoEngine(cfg.WorkDir)
+	log.Printf("Evo: %d genomes, %d trajectories", evo.Status().PopulationSize, evo.Status().TrajectoryCount)
 
 	// Init git
 	gitInit()
@@ -227,10 +251,14 @@ func mainLoop() {
 		context := readContext()
 		pastResults := summarizeResults()
 
-		log.Printf("Iteration %d — Generating hypotheses...", iteration)
+		// EvoMetaClaw: pick the strategy genome that steers this iteration.
+		genome := evo.Select()
+		strategy := evo.StrategyWithMemory(genome)
+
+		log.Printf("Iteration %d — Generating hypotheses (genome %s / %s)...", iteration, genome.Name, genome.Niche)
 
 		// Generate hypotheses
-		hypotheses := generateHypotheses(context, pastResults)
+		hypotheses := generateHypotheses(context, pastResults, strategy)
 		if len(hypotheses) == 0 {
 			log.Println("No hypotheses generated, stopping.")
 			return
@@ -255,9 +283,11 @@ func mainLoop() {
 			elapsed := time.Since(expStart).Seconds()
 			budgetRemaining -= elapsed
 			result.BudgetRemaining = budgetRemaining
+			result.GenomeID = genome.ID
 
 			// Append to results
 			experimentsMu.Lock()
+			prevBest := bestScore
 			experiments = append(experiments, result)
 			if result.Score > bestScore {
 				bestScore = result.Score
@@ -266,6 +296,7 @@ func mainLoop() {
 			experimentsMu.Unlock()
 			saveResults()
 			broadcastSSE(result)
+			evo.Record(genome.ID, result.ID, h.Hypothesis, result.Score, prevBest)
 
 			log.Printf("%s: score=%.4f, status=%s, budget_left=%.1fs",
 				result.ID, result.Score, result.Status, budgetRemaining)
@@ -282,20 +313,20 @@ type Hypothesis struct {
 	Params     map[string]any `json:"params"`
 }
 
-func generateHypotheses(context, pastResults string) []Hypothesis {
+func generateHypotheses(context, pastResults, strategy string) []Hypothesis {
 	// Try LLM API first
 	if key := os.Getenv("DEEPSEEK_API_KEY"); key != "" {
-		if h := callDeepSeek(key, context, pastResults); len(h) > 0 {
+		if h := callDeepSeek(key, context, pastResults, strategy); len(h) > 0 {
 			return h
 		}
 	}
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		if h := callAnthropic(key, context, pastResults); len(h) > 0 {
+		if h := callAnthropic(key, context, pastResults, strategy); len(h) > 0 {
 			return h
 		}
 	}
 	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
-		if h := callOpenAI(key, context, pastResults); len(h) > 0 {
+		if h := callOpenAI(key, context, pastResults, strategy); len(h) > 0 {
 			return h
 		}
 	}
@@ -304,35 +335,39 @@ func generateHypotheses(context, pastResults string) []Hypothesis {
 	return fallbackHypotheses()
 }
 
-func callDeepSeek(apiKey, context, pastResults string) []Hypothesis {
-	prompt := buildPrompt(context, pastResults)
+func callDeepSeek(apiKey, context, pastResults, strategy string) []Hypothesis {
+	prompt := buildPrompt(context, pastResults, strategy)
 	body := map[string]any{
 		"model": cfg.Model,
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
-		"max_tokens": 2000,
+		"max_tokens":  2000,
 		"temperature": 0.7,
 	}
 	return callLLMAPI("https://api.deepseek.com/chat/completions", apiKey, body, "deepseek")
 }
 
-func callAnthropic(apiKey, context, pastResults string) []Hypothesis {
-	prompt := buildPrompt(context, pastResults)
+func callAnthropic(apiKey, context, pastResults, strategy string) []Hypothesis {
+	prompt := buildPrompt(context, pastResults, strategy)
+	model := os.Getenv("ANTHROPIC_MODEL")
+	if model == "" {
+		model = "claude-opus-5-5"
+	}
 	body := map[string]any{
-		"model":       "claude-3-opus",
-		"max_tokens":  2000,
-		"messages":    []map[string]string{{"role": "user", "content": prompt}},
+		"model":      model,
+		"max_tokens": 16000,
+		"messages":   []map[string]string{{"role": "user", "content": prompt}},
 	}
 	return callLLMAPI("https://api.anthropic.com/v1/messages", apiKey, body, "anthropic")
 }
 
-func callOpenAI(apiKey, context, pastResults string) []Hypothesis {
-	prompt := buildPrompt(context, pastResults)
+func callOpenAI(apiKey, context, pastResults, strategy string) []Hypothesis {
+	prompt := buildPrompt(context, pastResults, strategy)
 	body := map[string]any{
-		"model":       cfg.Model,
-		"messages":    []map[string]string{{"role": "user", "content": prompt}},
-		"max_tokens":  2000,
+		"model":      cfg.Model,
+		"messages":   []map[string]string{{"role": "user", "content": prompt}},
+		"max_tokens": 2000,
 	}
 	return callLLMAPI("https://api.openai.com/v1/chat/completions", apiKey, body, "openai")
 }
@@ -382,6 +417,7 @@ func callLLMAPI(url, apiKey string, body map[string]any, provider string) []Hypo
 	case "anthropic":
 		var anon struct {
 			Content []struct {
+				Type string `json:"type"`
 				Text string `json:"text"`
 			} `json:"content"`
 		}
@@ -389,8 +425,12 @@ func callLLMAPI(url, apiKey string, body map[string]any, provider string) []Hypo
 			log.Printf("LLM parse error: %v", err)
 			return nil
 		}
-		if len(anon.Content) > 0 {
-			hypotheses = parseHypothesesJSON(anon.Content[0].Text)
+		// Thinking blocks may precede the answer; use the first text block.
+		for _, c := range anon.Content {
+			if c.Type == "text" {
+				hypotheses = parseHypothesesJSON(c.Text)
+				break
+			}
 		}
 	default:
 		var anon struct {
@@ -412,13 +452,16 @@ func callLLMAPI(url, apiKey string, body map[string]any, provider string) []Hypo
 	return hypotheses
 }
 
-func buildPrompt(context, pastResults string) string {
+func buildPrompt(context, pastResults, strategy string) string {
 	return fmt.Sprintf(`You are an AI research scientist running experiments to optimize a model.
 
 ## Context (human's goals and constraints)
 %s
 
 ## Past Experiment Results
+%s
+
+## Strategy for this round
 %s
 
 Generate %d distinct hypotheses for the next experiments.
@@ -430,7 +473,7 @@ Example:
   {"hypothesis": "Increase learning rate to 3e-5 with cosine decay", "params": {"lr": 3e-5, "scheduler": "cosine", "batch_size": 16, "epochs": 3}}
 ]
 
-Generate %d hypotheses now:`, context, pastResults, cfg.Hypotheses, cfg.Hypotheses)
+Generate %d hypotheses now:`, context, pastResults, strategy, cfg.Hypotheses, cfg.Hypotheses)
 }
 
 func parseHypothesesJSON(text string) []Hypothesis {
@@ -505,8 +548,8 @@ func runExperiment(h Hypothesis) Experiment {
 		// Simulated training
 		time.Sleep(time.Duration(1+randInt(3)) * time.Second)
 		metrics = map[string]any{
-			"f1_score":         0.82 + float64(randInt(5))/100,
-			"accuracy":         0.83,
+			"f1_score":          0.82 + float64(randInt(5))/100,
+			"accuracy":          0.83,
 			"inference_time_ms": 1.5,
 		}
 	}
@@ -749,6 +792,11 @@ func startHTTPServer() {
 	mux.HandleFunc("/api/start", handleStart)
 	mux.HandleFunc("/api/stop", handleStop)
 	mux.HandleFunc("/api/reset", handleReset)
+	mux.HandleFunc("/api/evo/status", handleEvoStatus)
+	mux.HandleFunc("/api/evo/genomes", handleEvoGenomes)
+	mux.HandleFunc("/api/evo/trajectories", handleEvoTrajectories)
+	mux.HandleFunc("/api/evo/lineage", handleEvoLineage)
+	mux.HandleFunc("/api/evo/skills", handleEvoSkills)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -898,6 +946,55 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 	experimentsMu.Unlock()
 	saveResults()
 	json.NewEncoder(w).Encode(map[string]string{"status": "reset"})
+}
+
+// ─── EvoMetaClaw / EvoSkillOps API ──────────────────────────────────────────
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(v)
+}
+
+func handleEvoStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, evo.Status())
+}
+
+func handleEvoGenomes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, evo.Genomes())
+}
+
+func handleEvoTrajectories(w http.ResponseWriter, r *http.Request) {
+	limit := atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 50
+	}
+	writeJSON(w, evo.RecentTrajectories(limit))
+}
+
+func handleEvoLineage(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, evo.Lineage(r.URL.Query().Get("id")))
+}
+
+// GET exports proven skills (?min_wins=N, default 1); POST imports a pack.
+func handleEvoSkills(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		minWins := 1
+		if v := r.URL.Query().Get("min_wins"); v != "" {
+			minWins = atoi(v)
+		}
+		writeJSON(w, evo.ExportSkills(minWins))
+	case http.MethodPost:
+		var pack SkillPack
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&pack); err != nil {
+			http.Error(w, "invalid skill pack: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, evo.ImportSkills(pack))
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
