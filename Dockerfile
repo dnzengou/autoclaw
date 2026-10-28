@@ -3,7 +3,7 @@
 FROM golang:1.24-alpine3.20 AS go-builder
 WORKDIR /build
 
-COPY agent.go evo.go deals.go go.mod ./
+COPY go.mod *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # Runtime stage
