@@ -8,7 +8,7 @@
 #   docker run --rm -p 8080:8080 -p 8081:8081 autoclaw:bitnet
 
 # ─── Stage 1: build BitNet ──────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS bitnet-builder
+FROM python:3.15-slim-bookworm AS bitnet-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git cmake build-essential clang curl ca-certificates \
@@ -23,9 +23,9 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
     && python setup_env.py --hf-repo microsoft/BitNet-b1.58-2B-4T-gguf --quant-type i2_s
 
 # ─── Stage 2: build autoclaw Go binary ──────────────────────────────────────
-FROM golang:1.24-alpine3.24 AS go-builder
+FROM golang:1.25-alpine3.24 AS go-builder
 WORKDIR /build
-COPY agent.go evo.go deals.go go.mod ./
+COPY go.mod *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────

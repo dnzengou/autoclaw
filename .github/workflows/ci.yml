@@ -10,9 +10,27 @@ env:
   CARGO_TERM_COLOR: always
 
 # Docker builds live in docker.yml. Fly.io deploy lives in fly-deploy.yml (when FLY_API_TOKEN is set).
-# This workflow only owns Rust quality gates.
+# This workflow owns the Go agent and Rust quality gates.
 
 jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - name: gofmt
+        run: test -z "$(gofmt -l *.go)" || { gofmt -l *.go; exit 1; }
+      - name: go vet
+        run: go vet .
+      - name: go test
+        run: go test -race -count=1 .
+      - name: go build (all release targets)
+        run: |
+          for t in linux/amd64 linux/arm64 darwin/arm64 windows/amd64; do
+            GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 go build -o /dev/null . || exit 1
+          done
+
   rust:
     runs-on: ubuntu-latest
     steps:

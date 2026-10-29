@@ -295,7 +295,19 @@ POST /api/stop              → { status: "stopped" }
 POST /api/reset             → { status: "reset" }
 GET  /events                → SSE stream of experiments + state events
 GET  /ws                    → WebSocket stream (same events, binary frames)
+
+# EvoMetaClaw / EvoSkillOps (Go agent)
+GET  /api/evo/status        → { population_size, trajectory_count, stagnation, breaker_tripped,
+                                best_genome, generations, retired, niches }
+GET  /api/evo/genomes       → [ SkillGenome, ... ]
+GET  /api/evo/trajectories  → last N outcomes (?limit=50)
+GET  /api/evo/lineage?id=   → [ genome, parent, ..., gen-0 seed ]
+GET  /api/evo/skills        → SkillPack of proven genomes (?min_wins=1)
+POST /api/evo/skills        → import a SkillPack → { imported, merged, skipped, ids }
 ```
+
+Every Go-agent experiment records the `genome_id` of the strategy that steered it.
+Set `ANTHROPIC_MODEL` to override the Claude model (default `claude-opus-5-5`).
 
 All SDKs (Python, JS, Go) wrap this surface identically.
 

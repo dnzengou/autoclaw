@@ -98,7 +98,7 @@ jobs:
           sed -i "s/^Version: .*/Version: $V/" packaging/debian/control
 
       - name: Open PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/release-${{ steps.tag.outputs.version }}-manifests

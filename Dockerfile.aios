@@ -10,7 +10,7 @@
 #     -v $HOME/aios-data:/data autoclaw:aios
 
 # ─── Stage 1: build BitNet + download models ────────────────────────────────
-FROM python:3.12-slim-bookworm AS models-builder
+FROM python:3.15-slim-bookworm AS models-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git cmake build-essential clang curl ca-certificates \
@@ -29,9 +29,9 @@ RUN mkdir -p /build/rag-models \
       https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
 
 # ─── Stage 2: build Go agent binary ─────────────────────────────────────────
-FROM golang:1.24-alpine3.24 AS go-builder
+FROM golang:1.25-alpine3.24 AS go-builder
 WORKDIR /build
-COPY agent.go evo.go deals.go go.mod ./
+COPY go.mod *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────

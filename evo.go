@@ -49,6 +49,11 @@ type SkillGenome struct {
 	ParentID   string  `json:"parent_id,omitempty"`
 	CreatedAt  string  `json:"created_at"`
 
+	// EvoSkillOps provenance: both parents of a crossover hybrid, and the
+	// genome ID a skill had in the pack it was imported from.
+	ParentIDs  []string `json:"parent_ids,omitempty"`
+	ImportedID string   `json:"imported_id,omitempty"`
+
 	// MEMORY_RETRIEVE_INJECT: top winning hypotheses this genome produced.
 	// Injected into future prompts as prior wins from this strategy's niche.
 	Memories []GenomeMemory `json:"memories,omitempty"`
@@ -75,12 +80,14 @@ type Trajectory struct {
 }
 
 type EvoStatus struct {
-	PopulationSize  int          `json:"population_size"`
-	TrajectoryCount int          `json:"trajectory_count"`
-	Stagnation      int          `json:"stagnation"`
-	BreakerTripped  bool         `json:"breaker_tripped"`
-	BestGenome      *SkillGenome `json:"best_genome,omitempty"`
-	Generations     int          `json:"generations"`
+	PopulationSize  int            `json:"population_size"`
+	TrajectoryCount int            `json:"trajectory_count"`
+	Stagnation      int            `json:"stagnation"`
+	BreakerTripped  bool           `json:"breaker_tripped"`
+	BestGenome      *SkillGenome   `json:"best_genome,omitempty"`
+	Generations     int            `json:"generations"`
+	Retired         int            `json:"retired"`
+	Niches          map[string]int `json:"niches"`
 }
 
 type EvoEngine struct {
@@ -92,6 +99,7 @@ type EvoEngine struct {
 	generations     int
 	lastBest        float64
 	nextGenomeID    int
+	retired         int
 }
 
 const (
@@ -155,6 +163,7 @@ func (e *EvoEngine) load() {
 			Generations     int           `json:"generations"`
 			LastBest        float64       `json:"last_best"`
 			NextGenomeID    int           `json:"next_genome_id"`
+			Retired         int           `json:"retired"`
 		}
 		if json.Unmarshal(data, &state) == nil {
 			e.genomes = state.Genomes
@@ -163,6 +172,7 @@ func (e *EvoEngine) load() {
 			e.generations = state.Generations
 			e.lastBest = state.LastBest
 			e.nextGenomeID = state.NextGenomeID
+			e.retired = state.Retired
 		}
 	}
 }
@@ -175,6 +185,7 @@ func (e *EvoEngine) save() {
 		"generations":      e.generations,
 		"last_best":        e.lastBest,
 		"next_genome_id":   e.nextGenomeID,
+		"retired":          e.retired,
 	}
 	if data, err := json.MarshalIndent(state, "", "  "); err == nil {
 		os.WriteFile(e.genomesPath(), data, 0644)
@@ -189,6 +200,9 @@ func (e *EvoEngine) Select() SkillGenome {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if len(e.genomes) == 0 {
+		e.genomes = seedGenomes(time.Now().UTC().Format(time.RFC3339))
+	}
 	weights := make([]float64, len(e.genomes))
 	total := 0.0
 	for i, g := range e.genomes {
@@ -237,6 +251,11 @@ func (e *EvoEngine) Record(genomeID, experimentID, hypothesis string, score, bes
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	// bestScore is the loop's best before this experiment; sync first so a
+	// fresh evo state doesn't count already-beaten scores as improvements.
+	if bestScore > e.lastBest {
+		e.lastBest = bestScore
+	}
 	improved := score > e.lastBest
 	delta := score - e.lastBest
 	if improved {
@@ -244,9 +263,6 @@ func (e *EvoEngine) Record(genomeID, experimentID, hypothesis string, score, bes
 		e.stagnation = 0
 	} else {
 		e.stagnation++
-	}
-	if bestScore > e.lastBest {
-		e.lastBest = bestScore
 	}
 
 	// Reward in [0,1]: improvements score high, harmless failures low-mid.
@@ -306,6 +322,13 @@ func (e *EvoEngine) Record(genomeID, experimentID, hypothesis string, score, bes
 		e.stagnation = 0
 	}
 
+	// EvoSkillOps: periodic recombination of proven genomes, then retire the
+	// evolved genomes that never paid off.
+	if e.trajectoryCount%evoCrossoverEvery == 0 {
+		e.crossover()
+	}
+	e.prune()
+
 	e.cull()
 	e.save()
 }
@@ -318,17 +341,17 @@ func (e *EvoEngine) spawnFromWin(parentID, hypothesis string) {
 		gen = parent.Generation + 1
 		niche = parent.Niche
 	}
+	strategy := "Build on this proven direction from a past winning experiment: " + truncateRunes(hypothesis, 140)
+	if e.hasStrategy(strategy) {
+		return
+	}
 	e.nextGenomeID++
 	e.generations = max(e.generations, gen)
-	summary := hypothesis
-	if len(summary) > 140 {
-		summary = summary[:140]
-	}
 	e.genomes = append(e.genomes, SkillGenome{
 		ID:         fmt.Sprintf("evo-%04d", e.nextGenomeID),
 		Name:       fmt.Sprintf("learned-%04d", e.nextGenomeID),
 		Niche:      niche,
-		Strategy:   "Build on this proven direction from a past winning experiment: " + summary,
+		Strategy:   strategy,
 		Fitness:    0.65, // head start: it just won
 		Generation: gen,
 		ParentID:   parentID,
@@ -424,6 +447,11 @@ func (e *EvoEngine) Status() EvoStatus {
 		Stagnation:      e.stagnation,
 		BreakerTripped:  e.stagnation >= evoStagnationLimit-1,
 		Generations:     e.generations,
+		Retired:         e.retired,
+		Niches:          map[string]int{},
+	}
+	for _, g := range e.genomes {
+		status.Niches[g.Niche]++
 	}
 	if b := e.best(); b != nil {
 		c := *b

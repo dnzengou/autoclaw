@@ -435,7 +435,42 @@ the v0.4 refinement loop without touching it.
 Not merging PR #31 whole: it also rewrote the dashboard + gutted Cargo deps +
 simplified Rust server — all predating v0.3/v0.4 and would revert shipped work.
 
+## EvoMetaClaw wired in + EvoSkillOps — v0.7.0 (2026-10-28)
+
+`evo.go` shipped in v0.4.1 but nothing called it. Now `mainLoop` selects a genome
+per iteration, injects `StrategyWithMemory()` into the hypothesis prompt, tags each
+experiment with `genome_id`, and feeds the outcome back via `Record()`.
+
+**`evo_skillops.go`** — lifecycle operations on the population:
+
+- **Crossover** — every 5 trajectories, the two fittest winning genomes from
+  different niches recombine into a `hybrid` child (`parent_ids` records both).
+- **Prune** — evolved genomes with ≥6 plays, 0 wins and fitness < 0.35 retire
+  before the population cap forces a cull. Gen-0 seeds are never pruned.
+- **Skill packs** — `GET /api/evo/skills` exports proven genomes; `POST` imports
+  them under fresh IDs with play stats reset. A strategy that already exists
+  (whitespace/case-insensitive hash) merges its memories instead of duplicating.
+- **Lineage** — `GET /api/evo/lineage?id=` walks back to the seed.
+
 ## Changelog
+
+### 0.7.0 — 2026-10-28
+- EvoMetaClaw wired into the Go loop; EvoSkillOps (crossover, prune, skill
+  packs, lineage) + `/api/evo/*` endpoints; 9 Go tests.
+- Fix: `Record` synced the loop's prior best *after* comparing, so a fresh evo
+  state counted already-beaten scores as wins.
+- Fix: Anthropic provider called retired `claude-3-opus`; default is now
+  `claude-opus-5-5` (`ANTHROPIC_MODEL` overrides) and the first `text` block is
+  parsed (thinking blocks can precede it).
+- CI: new Go job (gofmt, vet, `-race` tests, 4-target cross-build).
+  `release.yml` built `agent.go` alone — now builds the package.
+- CI: Node 20 → 22 (vitest 5 / tsup 9 require ≥ 22.12; Node 20 is EOL).
+- Branch cleanup: all 19 dependabot PRs consolidated and validated in one PR.
+  Cargo manifest now parses (missing `[[bench]]` removed; reqwest 0.13 feature
+  `rustls-tls` → `rustls`). The Rust crate still has 38 pre-existing compile
+  errors in `src/` (axum handler `Send` bounds, serde on `RwLock`, `git2` Sync)
+  — tracked by the existing `continue-on-error` TODOs.
+- Site: "It evolves its own strategy" section; version 0.7.0.
 
 ### 0.6.0 — 2026-08-10
 - Private AI OS thesis assembled from the top-ROI opportunities strategy doc.
@@ -515,4 +550,4 @@ simplified Rust server — all predating v0.3/v0.4 and would revert shipped work
 
 ---
 
-*Autoclaw v0.4.0 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.7.0 · MIT · Karpathy pattern · Caveman context format*
