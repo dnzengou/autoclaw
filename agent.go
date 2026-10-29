@@ -255,7 +255,7 @@ func mainLoop() {
 		genome := evo.Select()
 		strategy := evo.StrategyWithMemory(genome)
 
-		log.Printf("Iteration %d — Generating hypotheses (genome %s / %s)...", iteration, genome.Name, genome.Niche)
+		log.Printf("Iteration %d — Generating hypotheses (genome %s / %s)...", iteration, logSafe(genome.Name), logSafe(genome.Niche))
 
 		// Generate hypotheses
 		hypotheses := generateHypotheses(context, pastResults, strategy)
@@ -998,6 +998,13 @@ func handleEvoSkills(w http.ResponseWriter, r *http.Request) {
 }
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
+
+// logSafe neutralizes line breaks in values that can come from API input
+// (e.g. imported skill names) so they cannot forge log entries.
+func logSafe(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	return strings.ReplaceAll(s, "\r", " ")
+}
 
 func atoi(s string) int {
 	n, _ := strconv.Atoi(s)

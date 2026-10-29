@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -54,6 +55,18 @@ func truncateRunes(s string, n int) string {
 		return s
 	}
 	return string(r[:n])
+}
+
+// cleanLabel strips control characters (newlines included) from an imported
+// name or niche, which are logged and rendered, and caps its length.
+func cleanLabel(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
+	return truncateRunes(strings.TrimSpace(s), 64)
 }
 
 // strategyKey identifies a strategy independent of whitespace and case, so
@@ -203,11 +216,11 @@ func (e *EvoEngine) ImportSkills(pack SkillPack) ImportResult {
 		e.nextGenomeID++
 		gen := max(1, s.Generation)
 		e.generations = max(e.generations, gen)
-		name := s.Name
+		name := cleanLabel(s.Name)
 		if name == "" {
 			name = fmt.Sprintf("imported-%04d", e.nextGenomeID)
 		}
-		niche := s.Niche
+		niche := cleanLabel(s.Niche)
 		if niche == "" {
 			niche = "imported"
 		}

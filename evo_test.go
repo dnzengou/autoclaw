@@ -154,3 +154,17 @@ func TestTruncateRunesKeepsUTF8(t *testing.T) {
 		t.Fatalf("bad truncation: %d runes, valid=%v", utf8.RuneCountInString(out), utf8.ValidString(out))
 	}
 }
+
+func TestImportCleansLabels(t *testing.T) {
+	e := newTestEngine(t)
+	res := e.ImportSkills(SkillPack{Skills: []SkillGenome{{
+		Name: "evil\n[autoclaw] forged", Niche: "x\r\ny", Strategy: "Try a novel scheduler.",
+	}}})
+	g := e.find(res.IDs[0])
+	if strings.ContainsAny(g.Name+g.Niche, "\r\n") {
+		t.Fatalf("control chars survived import: %q / %q", g.Name, g.Niche)
+	}
+	if logSafe("a\nb\rc") != "a b c" {
+		t.Fatal("logSafe did not neutralize line breaks")
+	}
+}
