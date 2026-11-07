@@ -26,6 +26,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 FROM golang:1.25-alpine3.24 AS go-builder
 WORKDIR /build
 COPY go.mod *.go ./
+COPY site/openapi.json ./site/
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o /out/autoclaw .
 
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────

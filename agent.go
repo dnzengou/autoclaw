@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -819,6 +820,7 @@ func startHTTPServer() {
 	mux.HandleFunc("/api/evo/trajectories", handleEvoTrajectories)
 	mux.HandleFunc("/api/evo/lineage", handleEvoLineage)
 	mux.HandleFunc("/api/evo/skills", handleEvoSkills)
+	mux.HandleFunc("/openapi.json", handleOpenAPI)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -971,6 +973,15 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 }
 
 // ─── EvoMetaClaw / EvoSkillOps API ──────────────────────────────────────────
+
+//go:embed site/openapi.json
+var openAPISpec []byte
+
+func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Write(openAPISpec)
+}
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")

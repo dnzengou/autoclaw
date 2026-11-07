@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -91,5 +92,28 @@ func TestMCPServerDownIsToolError(t *testing.T) {
 	r := resps[0]["result"].(map[string]any)
 	if r["isError"] != true {
 		t.Fatalf("unreachable server should be a tool error, got %v", r)
+	}
+}
+
+// Every route the server registers must be documented in the OpenAPI spec.
+func TestOpenAPICoversRoutes(t *testing.T) {
+	var spec struct {
+		Paths map[string]any `json:"paths"`
+	}
+	if err := json.Unmarshal(openAPISpec, &spec); err != nil {
+		t.Fatalf("openapi.json invalid: %v", err)
+	}
+	src, err := os.ReadFile("agent.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range regexp.MustCompile(`mux\.HandleFunc\("([^"]+)"`).FindAllStringSubmatch(string(src), -1) {
+		route := m[1]
+		if route == "/" || route == "/openapi.json" {
+			continue
+		}
+		if _, ok := spec.Paths[route]; !ok {
+			t.Errorf("route %s missing from site/openapi.json", route)
+		}
 	}
 }
