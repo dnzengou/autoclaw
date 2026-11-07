@@ -1,0 +1,23 @@
+[
+  {
+    "hypothesis": "Add indexes on the two hot columns without rewriting the query.",
+    "params": {
+      "sql": "SELECT o.customer_id, COUNT(*) AS orders, SUM(o.amount_cents) AS total_cents FROM orders o JOIN customers c ON c.id = o.customer_id WHERE c.country = 'US' AND o.created_at >= '2026-01-01' GROUP BY o.customer_id HAVING SUM(o.amount_cents) > 100000 ORDER BY total_cents DESC LIMIT 20;",
+      "indexes": "CREATE INDEX IF NOT EXISTS i_orders_cust_date ON orders(customer_id, created_at); CREATE INDEX IF NOT EXISTS i_cust_country ON customers(country);"
+    }
+  },
+  {
+    "hypothesis": "Pre-filter US customers in a CTE so the join runs only on hot customers.",
+    "params": {
+      "sql": "WITH us AS (SELECT id FROM customers WHERE country='US') SELECT o.customer_id, COUNT(*) AS orders, SUM(o.amount_cents) AS total_cents FROM orders o JOIN us ON us.id = o.customer_id WHERE o.created_at >= '2026-01-01' GROUP BY o.customer_id HAVING SUM(o.amount_cents) > 100000 ORDER BY total_cents DESC LIMIT 20;",
+      "indexes": "CREATE INDEX IF NOT EXISTS i_orders_cust_date ON orders(customer_id, created_at); CREATE INDEX IF NOT EXISTS i_cust_country ON customers(country);"
+    }
+  },
+  {
+    "hypothesis": "Use IN (SELECT ...) semi-join for the country predicate instead of a JOIN.",
+    "params": {
+      "sql": "SELECT o.customer_id, COUNT(*) AS orders, SUM(o.amount_cents) AS total_cents FROM orders o WHERE o.customer_id IN (SELECT id FROM customers WHERE country='US') AND o.created_at >= '2026-01-01' GROUP BY o.customer_id HAVING SUM(o.amount_cents) > 100000 ORDER BY total_cents DESC LIMIT 20;",
+      "indexes": "CREATE INDEX IF NOT EXISTS i_orders_cust_date ON orders(customer_id, created_at); CREATE INDEX IF NOT EXISTS i_cust_country ON customers(country);"
+    }
+  }
+]

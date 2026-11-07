@@ -34,6 +34,18 @@ pip install "git+https://github.com/dnzengou/autoclaw#subdirectory=sdk/python"  
 > The PyPI package named `autoclaw` is an unrelated project — install the Python SDK from GitHub as above.
 > npm, Homebrew, Scoop, `.deb`, APK and the `install.sh` script ship with the first tagged release; see [DISTRIBUTION.md](DISTRIBUTION.md).
 
+## Examples
+
+Three self-contained problems in [`examples/`](examples/) — each a `context.md` + `train.py` + `rubric.json` you can clone and run:
+
+| | Example | Headroom | API key |
+|---|---|---|---|
+| 📱 | [regex-evolve](examples/regex-evolve/) — phone-number extraction | F1 0.77 → 1.00 | No |
+| 🧠 | [prompt-tune](examples/prompt-tune/) — spam-classifier system prompt | F1 0.43 → 0.95 | Any LLM key |
+| 🗄️ | [sql-speedup](examples/sql-speedup/) — SQL rewrite + indexes | 1.0× → 1.8× | No |
+
+Pattern for a new experiment: ship a `context.md`, a `train.py` that reads flags and prints JSON metrics, and a `rubric.json`. The loop handles the rest. When there is no LLM API key, a per-workspace `fallback.json` supplies seed hypotheses so the loop still runs end-to-end.
+
 ## For AI agents
 
 ```bash

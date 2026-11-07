@@ -1,0 +1,14 @@
+[
+  {
+    "hypothesis": "One-liner baseline: no instructions, just the label set.",
+    "params": { "prompt": "You are a spam detector. Reply spam or ham." }
+  },
+  {
+    "hypothesis": "Add a definition of spam that stays agnostic to surface keywords.",
+    "params": { "prompt": "Classify email messages as spam or ham.\n\nSpam = unsolicited bulk commercial or fraudulent mail (prize scams, phishing, miracle pills, unsolicited offers).\nHam = everything else, including transactional emails, receipts, reminders, team messages, and legitimate marketing you opted into.\n\nReply with a single word: spam or ham. No explanation." }
+  },
+  {
+    "hypothesis": "Add contrastive examples of ham-with-spammy-vocabulary.",
+    "params": { "prompt": "Decide whether each message is spam (unsolicited bulk commercial / fraudulent) or ham (anything else).\n\nSpammy surface words like FREE, click, unsubscribe, winner, $$$ do NOT by themselves make a message spam. Transactional and consented messages are ham even when they use them.\n\nExamples:\n  'FREE trial ends in 3 days — $9.99/mo after. Cancel anytime.'  →  ham\n  'CLICK here to approve the deploy: https://ci.company.com/runs/8821'  →  ham\n  'Unsubscribe link at bottom. This is a transactional email about order #88421.'  →  ham\n  'URGENT: You have won a $1000 gift card! Click here to claim: bit.ly/xyz'  →  spam\n\nReply with a single word: spam or ham." }
+  }
+]

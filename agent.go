@@ -49,6 +49,7 @@ type Config struct {
 	Port        int    // Dashboard HTTP port
 	RubricPath  string // Path to rubric JSON
 	NoDashboard bool
+	Headless    bool
 	WorkDir     string // Working directory
 }
 
@@ -163,6 +164,8 @@ func main() {
 			}
 		case "--no-dashboard":
 			cfg.NoDashboard = true
+		case "--headless":
+			cfg.Headless = true
 		case "--work-dir":
 			if i+1 < len(os.Args) {
 				cfg.WorkDir = os.Args[i+1]
@@ -186,12 +189,15 @@ func main() {
 
 	stopCh = make(chan struct{})
 
-	// Start dashboard HTTP server
-	if !cfg.NoDashboard {
+	// Start HTTP server. --headless turns it off completely; --no-dashboard
+	// keeps the API on (what examples and MCP need) but blanks out /.
+	if !cfg.Headless {
 		go startHTTPServer()
-		log.Printf("Dashboard: http://localhost:%d", cfg.Port)
 		log.Printf("API:       http://localhost:%d/api/results", cfg.Port)
 		log.Printf("SSE:       http://localhost:%d/events", cfg.Port)
+		if !cfg.NoDashboard {
+			log.Printf("Dashboard: http://localhost:%d", cfg.Port)
+		}
 	}
 
 	log.Printf("Autoclaw Agent Loop ready")
@@ -244,9 +250,9 @@ func main() {
 		}
 	}
 
-	// Stdin closed (containers, systemd, nohup): keep serving the dashboard
-	// and API until SIGINT/SIGTERM instead of exiting.
-	if !cfg.NoDashboard {
+	// Stdin closed (containers, systemd, nohup): keep serving until
+	// SIGINT/SIGTERM instead of exiting.
+	if !cfg.Headless {
 		log.Println("stdin closed — running headless; control via the HTTP API")
 		select {}
 	}
@@ -520,6 +526,16 @@ func parseHypothesesJSON(text string) []Hypothesis {
 }
 
 func fallbackHypotheses() []Hypothesis {
+	// A workspace can ship its own fallbacks for the no-API-key path:
+	// <workdir>/fallback.json holds a hypothesis array in the same shape
+	// the LLM would return. Examples use this so the loop runs end-to-end
+	// without a key.
+	if data, err := os.ReadFile(filepath.Join(cfg.WorkDir, "fallback.json")); err == nil {
+		var hs []Hypothesis
+		if json.Unmarshal(data, &hs) == nil && len(hs) > 0 {
+			return hs
+		}
+	}
 	return []Hypothesis{
 		{
 			Hypothesis: "Try learning rate 2e-5 with linear warmup (10% of steps)",
@@ -838,6 +854,10 @@ func serveDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html")
+	if cfg.NoDashboard {
+		w.Write([]byte(`<!doctype html><title>Autoclaw</title><h1>Autoclaw — API only</h1><p>The dashboard is off (<code>--no-dashboard</code>). See <a href="/openapi.json">/openapi.json</a>.</p>`))
+		return
+	}
 	dashboardPath := filepath.Join(cfg.WorkDir, "dashboard.html")
 	if data, err := os.ReadFile(dashboardPath); err == nil {
 		w.Write(data)

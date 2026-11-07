@@ -1,0 +1,9 @@
+{
+  "primary_metric": "f1",
+  "higher_is_better": true,
+  "secondary_metrics": ["precision", "recall", "elapsed_ms"],
+  "weights": { "f1": 1.0 },
+  "pass_threshold": 0.01,
+  "fail_threshold": -0.02,
+  "scoring": "absolute"
+}

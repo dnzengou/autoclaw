@@ -29,7 +29,7 @@ import (
 
 const mcpProtocolVersion = "2025-06-18"
 
-var mcpVersion = "0.8.0"
+var mcpVersion = "0.9.0"
 
 type rpcRequest struct {
 	JSONRPC string          `json:"jsonrpc"`

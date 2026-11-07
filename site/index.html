@@ -50,7 +50,7 @@
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "AI experimentation and AutoML",
       "operatingSystem": "Linux, macOS, Windows",
-      "softwareVersion": "0.8.0",
+      "softwareVersion": "0.9.0",
       "url": "https://autoclaw.dev/",
       "downloadUrl": "https://github.com/dnzengou/autoclaw/pkgs/container/autoclaw",
       "installUrl": "https://autoclaw.dev/#install",
@@ -375,6 +375,7 @@ footer .links a { margin: 0 10px; }
       <a href="dashboard.html?demo=1" class="plausible-event-name=nav_demo">Demo</a>
       <a href="#how">How</a>
       <a href="#evolve">Evolve</a>
+      <a href="#use-cases">Use cases</a>
       <a href="#install">Install</a>
       <a href="#agents">Agents</a>
       <a href="#pricing">Pricing</a>
@@ -457,9 +458,37 @@ GET /api/evo/lineage?id=evo-0007</pre>
   </div>
 </section>
 
+<section id="use-cases">
+  <div class="wrap">
+    <h2><span class="num">03</span>Use cases</h2>
+    <p class="lede">The same loop — a human-written <code>context.md</code>, a <code>train.py</code> that runs one experiment, and a <code>rubric.json</code> that scores it — fits any problem you can turn into "run a variant, read a number."</p>
+    <div class="channels">
+      <div class="channel">
+        <h3>📱 Regex evolution <span class="badge">No API key</span></h3>
+        <div class="audience">Learn a regex that extracts phone numbers from noisy text without matching dates, SKUs, IPs or credit cards.</div>
+        <pre>F1 0.77 → 1.00</pre>
+        <div class="audience" style="margin-top:8px"><a href="https://github.com/dnzengou/autoclaw/tree/main/examples/regex-evolve">examples/regex-evolve/</a></div>
+      </div>
+      <div class="channel">
+        <h3>🧠 Prompt tuning <span class="badge">Any LLM key</span></h3>
+        <div class="audience">Evolve an LLM classifier's system prompt against a labelled set. Baseline one-liner F1 ≈ 0.43; evolved prompts beat 0.95.</div>
+        <pre>F1 0.43 → 0.95</pre>
+        <div class="audience" style="margin-top:8px"><a href="https://github.com/dnzengou/autoclaw/tree/main/examples/prompt-tune">examples/prompt-tune/</a></div>
+      </div>
+      <div class="channel">
+        <h3>🗄️ SQL query speedup <span class="badge">No API key</span></h3>
+        <div class="audience">Rewrite a SQL query plus indexes to beat the baseline latency, with correctness enforced against baseline rows.</div>
+        <pre>1.0× → 1.8×</pre>
+        <div class="audience" style="margin-top:8px"><a href="https://github.com/dnzengou/autoclaw/tree/main/examples/sql-speedup">examples/sql-speedup/</a></div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:28px">Each example is a self-contained folder — clone the repo, <code>cd examples/&lt;name&gt;</code>, and <code>autoclaw server --work-dir .</code> runs it. See <a href="https://github.com/dnzengou/autoclaw/tree/main/examples">examples/</a>.</p>
+  </div>
+</section>
+
 <section id="install">
   <div class="wrap">
-    <h2><span class="num">03</span>Install</h2>
+    <h2><span class="num">04</span>Install</h2>
     <p class="lede">Up and running in under a minute. Every command in <b>Available now</b> is tested against the current build.</p>
     <h3 class="sub">Available now</h3>
     <div class="channels">
@@ -535,7 +564,7 @@ autoclaw#subdirectory=sdk/python"</pre>
 
 <section id="agents">
   <div class="wrap">
-    <h2><span class="num">04</span>Built for AI agents</h2>
+    <h2><span class="num">05</span>Built for AI agents</h2>
     <p class="lede">Autoclaw is designed to be driven by agents as well as people. An agent can read results, steer <code>context.md</code>, start and stop runs, and move proven strategies between projects.</p>
     <div class="channels evo-ops">
       <div class="channel">
@@ -561,7 +590,7 @@ GET /openapi.json   from any server</pre>
 
 <section id="pricing">
   <div class="wrap">
-    <h2><span class="num">05</span>Free forever. Pro for teams.</h2>
+    <h2><span class="num">06</span>Free forever. Pro for teams.</h2>
     <p class="lede">Self-host the loop on your own metal at zero cost. Pro unlocks managed runs, shared dashboards, and Claude/GPT/DeepSeek key pooling.</p>
     <div class="tiers">
 
@@ -607,7 +636,7 @@ GET /openapi.json   from any server</pre>
 
 <section id="faq">
   <div class="wrap">
-    <h2><span class="num">06</span>FAQ</h2>
+    <h2><span class="num">07</span>FAQ</h2>
     <div class="faq">
       <details>
         <summary>What is Autoclaw?</summary>
@@ -669,7 +698,7 @@ GET /openapi.json   from any server</pre>
       ·
       <a href="https://www.linkedin.com/in/dnzengou" target="_blank" rel="noopener">LinkedIn</a>
     </div>
-    <div>© 2026 Desired Solutions · MIT · Built with Karpathy's autoresearch pattern · v0.8.0</div>
+    <div>© 2026 Desired Solutions · MIT · Built with Karpathy's autoresearch pattern · v0.9.0</div>
   </div>
 </footer>
 

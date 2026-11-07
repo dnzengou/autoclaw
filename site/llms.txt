@@ -8,6 +8,22 @@ Key facts:
 - The PyPI package named `autoclaw` is an unrelated project. Install the Python SDK from GitHub: `pip install "git+https://github.com/dnzengou/autoclaw#subdirectory=sdk/python"`.
 - License: MIT. Self-hosting is free; a managed Pro tier is on a waitlist.
 
+## Examples
+
+- `examples/regex-evolve/` — evolve a phone-number regex (no API key; F1 0.77 → 1.0)
+- `examples/prompt-tune/` — evolve a spam-classifier system prompt (any LLM key; F1 0.43 → 0.95)
+- `examples/sql-speedup/` — evolve a SQL rewrite + indexes against a benchmark DB (no API key; 1.0× → 1.8×)
+
+Each example is a directory with `context.md`, `train.py`, `rubric.json`, and a `fallback.json` holding the no-API seed hypotheses. Run with `autoclaw server --work-dir examples/<name>`; the loop writes experiments to `<name>/experiments/`.
+
+## Flags
+
+- `autoclaw server` — run the HTTP API + dashboard on $PORT (default 8080)
+- `autoclaw mcp` — stdio MCP server that forwards tool calls to a running server
+- `--no-dashboard` — API only (dashboard disabled)
+- `--headless` — disable the HTTP server (CLI only)
+- `--work-dir`, `--budget`, `--hypotheses`, `--rubric`
+
 ## Docs
 
 - [Full reference for LLMs](llms-full.txt): concepts, API, MCP tools, EvoMetaClaw in one file
