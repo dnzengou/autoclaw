@@ -1,0 +1,9 @@
+{
+  "primary_metric": "f1",
+  "higher_is_better": true,
+  "secondary_metrics": ["accuracy", "precision", "recall", "unknown_replies"],
+  "weights": { "f1": 0.8, "accuracy": 0.2 },
+  "pass_threshold": 0.01,
+  "fail_threshold": -0.02,
+  "scoring": "absolute"
+}

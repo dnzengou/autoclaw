@@ -1,0 +1,25 @@
+{"text": "URGENT: You have won a $1000 gift card! Click here to claim: bit.ly/xyz", "label": "spam"}
+{"text": "Dear valued customer, you've been selected for a FREE iPhone. Reply YES now.", "label": "spam"}
+{"text": "Make $5000/week from home. No experience needed. Apply today.", "label": "spam"}
+{"text": "CONGRATULATIONS!!! You are the 1,000,000th visitor. Collect your prize.", "label": "spam"}
+{"text": "Lose 20 pounds in 7 days guaranteed. Our miracle pill works. Order now 100% off", "label": "spam"}
+{"text": "Hot singles in your area want to meet. Click to see photos.", "label": "spam"}
+{"text": "Your account has been compromised. Verify at secure-paypa1.com immediately.", "label": "spam"}
+{"text": "Low interest loans, instant approval, no credit check. Act now!", "label": "spam"}
+{"text": "Unsubscribe or confirm? You're one click from exclusive offers. $$$ guaranteed.", "label": "spam"}
+{"text": "Your Amazon package can not be delivered. Update payment: amzn-track.ru", "label": "spam"}
+{"text": "Hi, can we move the standup to 10:30 tomorrow? I have a conflict at 10.", "label": "ham"}
+{"text": "Thanks for the PR review — pushed the two nits, CI is green. Merging.", "label": "ham"}
+{"text": "Mom called, dinner is at 7. She said bring the sourdough.", "label": "ham"}
+{"text": "Rent is due Friday. Transfer the usual amount when you get a chance.", "label": "ham"}
+{"text": "Flight DL123 to Boston is boarding at gate B22. Have a great trip!", "label": "ham"}
+{"text": "Heads up: the staging DB is being migrated tonight, 10pm-midnight PT.", "label": "ham"}
+{"text": "Dental cleaning reminder for Oct 28 at 2pm. Reply STOP to opt out.", "label": "ham"}
+{"text": "Could you share the slides from today's design review? Need them for Thursday.", "label": "ham"}
+{"text": "Package delivered: 1 item. Left at your door by Jorge.", "label": "ham"}
+{"text": "Lunch? New ramen place on 3rd opened. 12:30 ok?", "label": "ham"}
+{"text": "Invoice #4217 attached. Net 30. Thanks for your business.", "label": "ham"}
+{"text": "FREE trial ends in 3 days — $9.99/mo after. Cancel anytime in settings.", "label": "ham"}
+{"text": "Winner of the Q3 team award: congratulations to Maya! 🎉", "label": "ham"}
+{"text": "CLICK here to approve the deploy: https://ci.company.com/runs/8821", "label": "ham"}
+{"text": "Unsubscribe link at bottom. This is a transactional email about your order #88421.", "label": "ham"}

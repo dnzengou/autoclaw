@@ -1,0 +1,9 @@
+{
+  "primary_metric": "speedup",
+  "higher_is_better": true,
+  "secondary_metrics": ["query_us", "correct"],
+  "weights": { "speedup": 1.0 },
+  "pass_threshold": 1.1,
+  "fail_threshold": -0.1,
+  "scoring": "absolute"
+}

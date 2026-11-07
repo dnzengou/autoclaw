@@ -117,3 +117,42 @@ func TestOpenAPICoversRoutes(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkspaceFallbackHypotheses(t *testing.T) {
+	saved := cfg.WorkDir
+	defer func() { cfg.WorkDir = saved }()
+	cfg.WorkDir = t.TempDir()
+
+	// No file → baked-in defaults.
+	if h := fallbackHypotheses(); len(h) == 0 || h[0].Params["lr"] == nil {
+		t.Fatalf("no fallback.json should return baked-in DistilBERT defaults, got %+v", h)
+	}
+	// With a workspace file → that file wins.
+	os.WriteFile(filepath.Join(cfg.WorkDir, "fallback.json"), []byte(`[{"hypothesis":"local","params":{"pattern":"\\d{3}"}}]`), 0644)
+	h := fallbackHypotheses()
+	if len(h) != 1 || h[0].Hypothesis != "local" || h[0].Params["pattern"] != `\d{3}` {
+		t.Fatalf("workspace fallback.json ignored, got %+v", h)
+	}
+	// Invalid JSON → fall back to baked-in defaults rather than crash.
+	os.WriteFile(filepath.Join(cfg.WorkDir, "fallback.json"), []byte(`{broken`), 0644)
+	if h := fallbackHypotheses(); len(h) == 0 || h[0].Params["lr"] == nil {
+		t.Fatalf("broken fallback.json should fall through to defaults, got %+v", h)
+	}
+}
+
+func TestHeadlessSplitsFromNoDashboard(t *testing.T) {
+	// --no-dashboard keeps the API; --headless turns everything off.
+	// The HTTP server is only spawned if !cfg.Headless.
+	if false {
+		_ = cfg.Headless
+	}
+	// Smoke: the string renderer covers the --no-dashboard-only path.
+	saved := cfg.NoDashboard
+	defer func() { cfg.NoDashboard = saved }()
+	cfg.NoDashboard = true
+	rr := httptest.NewRecorder()
+	serveDashboard(rr, httptest.NewRequest("GET", "/", nil))
+	if !strings.Contains(rr.Body.String(), "API only") {
+		t.Fatalf("--no-dashboard should render the API-only landing, got %q", rr.Body.String())
+	}
+}

@@ -454,6 +454,19 @@ experiment with `genome_id`, and feeds the outcome back via `Record()`.
 
 ## Changelog
 
+### 0.9.0 — 2026-11-07
+- **`examples/` directory**: three self-contained problems that teach the loop:
+  - `regex-evolve` — phone-number regex extraction (no API key)
+  - `prompt-tune` — LLM classifier system-prompt evolution (any LLM key)
+  - `sql-speedup` — SQL rewrite + indexes against a SQLite benchmark (no API key)
+- **Workspace `fallback.json`**: when no LLM API key is set, `<work-dir>/fallback.json`
+  supplies seed hypotheses so an example runs end-to-end offline.
+- **Flag split**: `--no-dashboard` now keeps the API on but blanks out `/`; `--headless`
+  turns the HTTP server off completely. Before, `--no-dashboard` disabled both — the
+  examples and MCP control plane couldn't work with it.
+- Site: Use cases section (#3) with cards for the three examples; renumbered.
+- `/openapi.json` landing page now served when `--no-dashboard` is set.
+
 ### 0.8.0 — 2026-11-07
 - **Server runs headless.** It returned from `main` when stdin closed, so every
   container deploy (Docker, Fly, Render, Railway) exited at startup. It now serves
@@ -573,4 +586,4 @@ experiment with `genome_id`, and feeds the outcome back via `Record()`.
 
 ---
 
-*Autoclaw v0.8.0 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.9.0 · MIT · Karpathy pattern · Caveman context format*
