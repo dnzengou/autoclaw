@@ -1,0 +1,28 @@
+# Autoclaw
+
+> Autoclaw is an open-source (MIT), self-improving AI experiment loop. A human writes goals and constraints in context.md; an LLM proposes hypotheses; each experiment runs under a time budget and is scored against rubric.json; git commits wins and reverts regressions. EvoMetaClaw evolves which strategy steers each round, and EvoSkillOps exports and imports proven strategies between projects. AI agents can drive it through an MCP server (`autoclaw mcp`) or the HTTP API (OpenAPI 3.1).
+
+Key facts:
+- Install: `docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest` or `go install github.com/dnzengou/autoclaw@latest`, then `autoclaw server`. The dashboard is at http://localhost:8080.
+- LLM providers (Go server): Anthropic Claude (default `claude-opus-5-5`, override with `ANTHROPIC_MODEL`), OpenAI, DeepSeek — whichever API key is set. The Python agent also supports a local BitNet or OpenAI-compatible model.
+- The PyPI package named `autoclaw` is an unrelated project. Install the Python SDK from GitHub: `pip install "git+https://github.com/dnzengou/autoclaw#subdirectory=sdk/python"`.
+- License: MIT. Self-hosting is free; a managed Pro tier is on a waitlist.
+
+## Docs
+
+- [Full reference for LLMs](llms-full.txt): concepts, API, MCP tools, EvoMetaClaw in one file
+- [OpenAPI 3.1 spec](openapi.json): every HTTP endpoint and schema
+- [HOWTO](https://github.com/dnzengou/autoclaw/blob/main/HOWTO.md): why, what, how, use cases, API reference
+- [README](https://github.com/dnzengou/autoclaw/blob/main/README.md): quickstart and SDK examples
+- [Architecture](https://github.com/dnzengou/autoclaw/blob/main/docs/ARCHITECTURE.md): how the server, loop and dashboard fit together
+
+## Agents
+
+- [MCP server](https://github.com/dnzengou/autoclaw/blob/main/mcp.go): `autoclaw mcp` — 11 tools over stdio (status, results, context read/write, start/stop, evo genomes, lineage, skill-pack export/import)
+- [Live demo dashboard](dashboard.html?demo=1): simulated run, no server needed
+
+## Optional
+
+- [Source code](https://github.com/dnzengou/autoclaw)
+- [Changelog](https://github.com/dnzengou/autoclaw/blob/main/BLUEPRINT.md#changelog)
+- [Privacy](https://github.com/dnzengou/autoclaw/blob/main/PRIVACY.md): no telemetry

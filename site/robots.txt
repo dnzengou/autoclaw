@@ -1,4 +1,20 @@
+# Autoclaw welcomes search engines, AI search, and AI assistants.
 User-agent: *
+Allow: /
+
+# AI crawlers and assistants, listed explicitly so intent is unambiguous.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Meta-ExternalAgent
+User-agent: CCBot
 Allow: /
 
 Sitemap: https://autoclaw.dev/sitemap.xml
