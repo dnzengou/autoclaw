@@ -168,3 +168,56 @@ func TestImportCleansLabels(t *testing.T) {
 		t.Fatal("logSafe did not neutralize line breaks")
 	}
 }
+
+func TestBestIgnoresUntriedGenomes(t *testing.T) {
+	e := newTestEngine(t)
+	e.genomes[0].Plays, e.genomes[0].Fitness = 4, 0.55
+	e.genomes = append(e.genomes, SkillGenome{ID: "evo-0001", Generation: 1, Fitness: 0.9})
+	if b := e.Status().BestGenome; b == nil || b.ID != "gen0-00" {
+		t.Fatalf("best = %+v, want the played gen0-00", b)
+	}
+}
+
+func TestDiversityDoesNotStackUntriedMutants(t *testing.T) {
+	e := newTestEngine(t)
+	e.injectDiversity()
+	e.injectDiversity()
+	n := 0
+	for _, g := range e.genomes {
+		if g.Niche == "diversity" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("%d diversity genomes, want 1 while the first is untried", n)
+	}
+}
+
+func TestGradedRewardSeparatesNearMissFromCrash(t *testing.T) {
+	e := newTestEngine(t)
+	e.Record("gen0-00", "exp-0", "baseline", 0.8, 0)
+	e.Record("gen0-01", "exp-1", "near miss", 0.79, 0.8)
+	e.Record("gen0-02", "exp-2", "crash", 0, 0.8)
+	near, crash := e.find("gen0-01").Fitness, e.find("gen0-02").Fitness
+	if near <= crash {
+		t.Fatalf("near-miss fitness %.3f should exceed crash %.3f", near, crash)
+	}
+}
+
+func TestExplorationReachesUnderplayedGenome(t *testing.T) {
+	e := newTestEngine(t)
+	for i := range e.genomes {
+		e.genomes[i].Plays, e.genomes[i].Fitness = 40, 0.6
+	}
+	e.genomes[4].Plays, e.genomes[4].Fitness = 0, 0.45
+	hits := 0
+	for i := 0; i < 2000; i++ {
+		if e.Select().ID == "gen0-04" {
+			hits++
+		}
+	}
+	// Without the bonus this genome would get ~11%; with it, clearly more.
+	if hits < 2000/7 {
+		t.Fatalf("underplayed genome selected %d/2000 times", hits)
+	}
+}

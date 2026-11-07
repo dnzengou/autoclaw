@@ -136,6 +136,17 @@ main { padding: 20px; max-width: 1400px; margin: 0 auto; width: 100%; }
   max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--fg);
 }
+.scroll-x { overflow-x: auto; }
+main, .view, .panel, .grid > * { min-width: 0; }
+.stat-hint { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .topbar { grid-template-columns: 1fr auto; gap: 10px; padding: 10px 16px; }
+  .tabs { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; overflow-x: auto; }
+  .tabs kbd, .topbar .btn kbd { display: none; }
+  .demo-banner { font-size: 12px; }
+}
+.fit { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--surface-2); vertical-align: middle; margin-right: 8px; overflow: hidden; }
+.fit > i { display: block; height: 100%; background: var(--accent); }
 .empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
 
 /* status pills */
@@ -202,6 +213,7 @@ body.demo .demo-banner { display: block; }
     <button data-tab="live" class="active"><kbd>1</kbd>Live</button>
     <button data-tab="history"><kbd>2</kbd>History</button>
     <button data-tab="context"><kbd>3</kbd>Context</button>
+    <button data-tab="evo"><kbd>4</kbd>Evolution</button>
   </nav>
   <div class="actions">
     <button id="btn-start" class="btn"><kbd>S</kbd>Start</button>
@@ -236,6 +248,20 @@ body.demo .demo-banner { display: block; }
     </div>
   </section>
 
+  <section id="view-evo" class="view">
+    <div class="grid" style="margin-bottom:14px">
+      <div class="stat"><div class="stat-label">Genomes</div><div id="evo-pop" class="stat-value">—</div><div id="evo-niches" class="stat-hint"></div></div>
+      <div class="stat"><div class="stat-label">Generations</div><div id="evo-gen" class="stat-value">—</div><div id="evo-retired" class="stat-hint"></div></div>
+      <div class="stat"><div class="stat-label">Trajectories</div><div id="evo-traj" class="stat-value">—</div><div id="evo-stag" class="stat-hint"></div></div>
+      <div class="stat"><div class="stat-label">Best strategy</div><div id="evo-best" class="stat-value" style="font-size:18px">—</div><div id="evo-best-niche" class="stat-hint"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">Strategy genomes <span class="muted">· EvoMetaClaw picks one per iteration; wins raise fitness</span>
+        <button id="btn-export" class="btn" style="margin-left:auto">Export skill pack</button></div>
+      <div id="evo-table" class="scroll-x"></div>
+    </div>
+  </section>
+
   <section id="view-context" class="view">
     <div class="panel">
       <div class="panel-head">context.md <span class="muted">· your goals</span></div>
@@ -251,7 +277,7 @@ body.demo .demo-banner { display: block; }
 <footer class="footer">
   <span>
     <span id="footer-state">○ idle</span> · <span id="footer-conn">SSE offline</span> ·
-    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs · <kbd>S</kbd> start · <kbd>X</kbd> stop · <kbd>R</kbd> reset
+    <kbd>1</kbd>–<kbd>4</kbd> tabs · <kbd>S</kbd> start · <kbd>X</kbd> stop · <kbd>R</kbd> reset
   </span>
 </footer>
 
@@ -412,6 +438,51 @@ document.getElementById("btn-save").onclick = async () => {
   await fetch(`${API}/api/context`, { method: "POST", body });
 };
 
+// Evolution (EvoMetaClaw / EvoSkillOps)
+const evoState = { status: null, genomes: [] };
+async function refreshEvo() {
+  if (DEMO) { Object.assign(evoState, demoEvo()); return renderEvo(); }
+  try {
+    const [s, g] = await Promise.all([fetch(`${API}/api/evo/status`), fetch(`${API}/api/evo/genomes`)]);
+    if (s.ok && g.ok) { evoState.status = await s.json(); evoState.genomes = await g.json(); renderEvo(); }
+  } catch (_) {}
+}
+function renderEvo() {
+  const s = evoState.status;
+  if (!s) return;
+  const set = (id, v) => { document.getElementById(id).textContent = v; };
+  set("evo-pop", s.population_size);
+  set("evo-niches", Object.entries(s.niches || {}).map(([k, v]) => `${k} ${v}`).join(" · "));
+  set("evo-gen", s.generations);
+  set("evo-retired", `${s.retired || 0} retired`);
+  set("evo-traj", s.trajectory_count);
+  set("evo-stag", s.breaker_tripped ? "breaker tripping — injecting diversity" : `${s.stagnation} since last win`);
+  set("evo-best", s.best_genome ? s.best_genome.name : "—");
+  set("evo-best-niche", s.best_genome ? `${s.best_genome.niche} · fitness ${s.best_genome.fitness.toFixed(3)}` : "");
+  const rows = [...evoState.genomes].sort((a, b) => b.fitness - a.fitness);
+  const el = document.getElementById("evo-table");
+  if (!rows.length) { el.innerHTML = `<div class="empty">No genomes yet.</div>`; return; }
+  el.innerHTML = `<table class="tbl">
+    <thead><tr><th>Genome</th><th>Niche</th><th>Strategy</th><th class="num">Fitness</th><th class="num">Plays</th><th class="num">Wins</th><th class="num">Gen</th></tr></thead>
+    <tbody>${rows.map(g => `<tr>
+      <td class="mono">${escapeHTML(g.name)}</td>
+      <td><span class="pill">${escapeHTML(g.niche)}</span></td>
+      <td class="hypo" title="${escapeHTML(g.strategy)}">${escapeHTML(g.strategy)}</td>
+      <td class="num mono"><span class="fit"><i style="width:${Math.round(Math.min(1, g.fitness) * 100)}%"></i></span>${g.fitness.toFixed(3)}</td>
+      <td class="num mono">${g.plays}</td><td class="num mono">${g.wins}</td><td class="num mono muted">${g.generation}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+document.getElementById("btn-export").onclick = async () => {
+  const pack = DEMO
+    ? { version: 1, exported_at: new Date().toISOString(), skills: evoState.genomes.filter(g => g.wins > 0) }
+    : await (await fetch(`${API}/api/evo/skills`)).json();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" }));
+  a.download = "autoclaw-skill-pack.json";
+  a.click();
+};
+setInterval(() => { if (document.getElementById("view-evo").classList.contains("active")) refreshEvo(); }, 5000);
+
 // Tabs
 document.querySelectorAll(".tabs button").forEach(btn => {
   btn.onclick = () => switchTab(btn.dataset.tab);
@@ -419,6 +490,7 @@ document.querySelectorAll(".tabs button").forEach(btn => {
 function switchTab(name) {
   document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${name}`));
+  if (name === "evo") refreshEvo();
 }
 
 // Keyboard shortcuts
@@ -430,9 +502,29 @@ window.addEventListener("keydown", (e) => {
   else if (e.key === "1") switchTab("live");
   else if (e.key === "2") switchTab("history");
   else if (e.key === "3") switchTab("context");
+  else if (e.key === "4") switchTab("evo");
 });
 
 // ─── Demo mode ──────────────────────────────────────────────────────
+function demoEvo() {
+  const n = state.experiments.length;
+  const g = (id, name, niche, strategy, fitness, plays, wins, generation) => ({ id, name, niche, strategy, fitness, plays, wins, generation });
+  const genomes = [
+    g("gen0-00", "lr-tuner", "hyperparameters", "Focus on learning rate, warmup, and schedule changes. One knob per experiment.", 0.71, 7, 3, 0),
+    g("gen0-01", "regularizer", "regularization", "Focus on dropout, weight decay, label smoothing, or augmentation to reduce overfitting.", 0.58, 5, 1, 0),
+    g("gen0-02", "architect", "architecture", "Propose a structural change: layer sizes, normalization placement, activation choice.", 0.41, 3, 0, 0),
+    g("gen0-03", "data-shaper", "data", "Focus on data: batch composition, sampling, augmentation, or preprocessing changes.", 0.52, 3, 1, 0),
+    g("gen0-04", "radical", "exploration", "Propose a bold, unconventional change unlike previous experiments. High risk, high reward.", 0.36, 2, 0, 0),
+    g("evo-0001", "learned-0001", "hyperparameters", "Build on this proven direction from a past winning experiment: Warmup 500 steps then linear decay", 0.77, 4, 2, 1),
+    g("evo-0003", "hybrid-0003", "hybrid", "Combine two proven strategies in one experiment. A (lr-tuner) + B (regularizer)", 0.64, 2, 1, 2),
+  ];
+  return {
+    genomes,
+    status: { population_size: genomes.length, trajectory_count: Math.max(n, 20), stagnation: 2, breaker_tripped: false,
+      generations: 2, retired: 1, niches: genomes.reduce((m, x) => (m[x.niche] = (m[x.niche] || 0) + 1, m), {}),
+      best_genome: genomes[5] },
+  };
+}
 // Hydrates the UI with a plausible past run (20 experiments), then simulates
 // a live SSE stream so users can see the loop's cadence without a real server.
 const DEMO_HYPOTHESES = [
