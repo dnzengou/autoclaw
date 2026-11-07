@@ -1,0 +1,95 @@
+# Autoclaw
+
+> Autoclaw is an open-source (MIT), self-improving AI experiment loop. A human writes goals and constraints in context.md; an LLM proposes hypotheses; each experiment runs under a time budget and is scored against rubric.json; git commits wins and reverts regressions. EvoMetaClaw evolves which strategy steers each round, and EvoSkillOps exports and imports proven strategies between projects. AI agents can drive it through an MCP server (`autoclaw mcp`) or the HTTP API (OpenAPI 3.1).
+
+Key facts:
+- Install: `docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest` or `go install github.com/dnzengou/autoclaw@latest`, then `autoclaw server`. The dashboard is at http://localhost:8080.
+- LLM providers (Go server): Anthropic Claude (default `claude-opus-5-5`, override with `ANTHROPIC_MODEL`), OpenAI, DeepSeek — whichever API key is set. The Python agent also supports a local BitNet or OpenAI-compatible model.
+- The PyPI package named `autoclaw` is an unrelated project. Install the Python SDK from GitHub: `pip install "git+https://github.com/dnzengou/autoclaw#subdirectory=sdk/python"`.
+- License: MIT. Self-hosting is free; a managed Pro tier is on a waitlist.
+
+## How the loop works
+
+1. You edit `context.md` (MISSION, CONSTRAINTS, HYPOTHESES, LEARNINGS).
+2. EvoMetaClaw selects a strategy genome and injects its strategy and remembered wins into the prompt.
+3. The LLM returns hypotheses as JSON: `[{"hypothesis": ..., "params": {...}}]`.
+4. Each hypothesis runs `train.py` in `experiments/<id>/` under the remaining time budget.
+5. Metrics are scored against `rubric.json` (primary metric, weights, pass/fail thresholds).
+6. Git commits the experiment; a new best is tagged `best-<id>`; a score below best + fail_threshold is marked `reverted`.
+7. The outcome feeds back into the genome's fitness. Wins spawn new genomes; stagnation trips a circuit breaker that injects a diversity mutant; proven genomes from different niches cross over; winless genomes are retired.
+
+## EvoMetaClaw and EvoSkillOps
+
+- Seed niches: hyperparameters, regularization, architecture, data, exploration. Evolved niches: learned (from wins), diversity (mutants), hybrid (crossover), imported.
+- Selection: softmax (temperature 0.25) over variance-gated fitness plus a UCB exploration bonus.
+- Reward: 0.7–1.0 for a new best; 0.1–0.4 otherwise, scaled by score/best.
+- Skill packs: `GET /api/evo/skills?min_wins=1` exports proven genomes; `POST /api/evo/skills` imports them with fresh IDs; a strategy that already exists merges its remembered wins.
+- State lives in `.autoclaw/evo/genomes.json` and `.autoclaw/evo/trajectories.jsonl`.
+
+## MCP tools (`autoclaw mcp`)
+
+Configure: `{"mcpServers": {"autoclaw": {"command": "autoclaw", "args": ["mcp"]}}}` or `claude mcp add autoclaw -- autoclaw mcp`. Set `AUTOCLAW_URL` if the server is not on localhost:8080.
+
+- `autoclaw_status` — Current state of the experiment loop: running, total experiments, best score, remaining budget (seconds), uptime.
+- `autoclaw_results` — Experiments run so far (hypothesis, params, metrics, score, status, git hash, genome_id). Returns the most recent `limit` (default 20).
+- `autoclaw_get_context` — Read context.md — the human-owned MISSION / CONSTRAINTS / HYPOTHESES / LEARNINGS file that steers what the loop tries.
+- `autoclaw_set_context` — Replace the whole of context.md. Read it first with autoclaw_get_context and send back the full edited text; the next iteration uses it.
+- `autoclaw_start` — Start the experiment loop with a fresh time budget. Spends LLM API credits and runs train.py.
+- `autoclaw_stop` — Stop the experiment loop after the current experiment.
+- `evo_status` — EvoMetaClaw population summary: size, trajectories, stagnation counter, circuit breaker, best proven genome, generations, retired count, genomes per niche.
+- `evo_genomes` — All strategy genomes with fitness, plays, wins, generation, parents and remembered winning hypotheses.
+- `evo_lineage` — Ancestry of one genome, newest first, back to its generation-0 seed.
+- `evo_export_skills` — Export proven strategy genomes as a portable SkillPack JSON (genomes with at least min_wins wins, default 1).
+- `evo_import_skills` — Import a SkillPack (from evo_export_skills on another workspace). New strategies join the population; duplicates merge their remembered wins.
+
+## HTTP API
+
+Base URL: the server (default http://localhost:8080, or $PORT). Full schema: openapi.json.
+
+- `GET /api/status` — Loop status
+- `GET /api/results` — All experiments, oldest first
+- `GET /api/context` — Read context.md
+- `POST /api/context` — Replace context.md
+- `POST /api/start` — Start the loop with a fresh budget
+- `POST /api/stop` — Stop the loop
+- `POST /api/reset` — Clear all experiments and the best score
+- `GET /events` — Server-sent events: one Experiment per `data:` line, past experiments first
+- `GET /api/evo/status` — Strategy population summary
+- `GET /api/evo/genomes` — All strategy genomes
+- `GET /api/evo/trajectories` ?limit — Most recent experiment outcomes per genome
+- `GET /api/evo/lineage` ?id — A genome and its ancestors, newest first
+- `GET /api/evo/skills` ?min_wins — Export proven genomes as a skill pack
+- `POST /api/evo/skills` — Import a skill pack (max 1 MiB)
+
+## Configuration
+
+- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` — the first one set (DeepSeek, then Anthropic, then OpenAI) is used; with none, built-in fallback hypotheses run.
+- `ANTHROPIC_MODEL` — Claude model (default `claude-opus-5-5`).
+- `PORT` — HTTP port (default 8080). Flags: `--budget <s>`, `--hypotheses <n>`, `--rubric <path>`, `--work-dir <dir>`, `--no-dashboard`.
+- `AUTOCLAW_URL` — server URL used by `autoclaw mcp`.
+
+## FAQ
+
+### What is Autoclaw?
+
+Autoclaw is an open-source, self-improving experiment loop. You describe goals and constraints in context.md; an LLM proposes hypotheses, each experiment runs under a time budget and is scored against rubric.json, and git commits the wins and reverts the regressions.
+
+### How does Autoclaw decide what to try next?
+
+EvoMetaClaw keeps a population of strategy genomes (learning-rate tuning, regularization, architecture, data, exploration). Each round it picks one by fitness with an exploration bonus, injects it and its past wins into the prompt, and updates fitness from the score. Winning hypotheses become new genomes, proven genomes cross over into hybrids, and dead ones are retired.
+
+### Can AI agents use Autoclaw?
+
+Yes. Run `autoclaw mcp` to expose the loop as Model Context Protocol tools for Claude Code, Claude Desktop, Cursor or any MCP client. The HTTP API is described by an OpenAPI 3.1 spec at /openapi.json, and the site publishes llms.txt for LLM crawlers.
+
+### Which language models does it support?
+
+The Go server calls Anthropic Claude (default claude-opus-5-5, override with ANTHROPIC_MODEL), OpenAI or DeepSeek, whichever API key is set. The Python agent can also use a local BitNet or other OpenAI-compatible model, so experiments can run fully offline.
+
+### How do I install Autoclaw?
+
+Run the container with `docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest`, or install the binary with `go install github.com/dnzengou/autoclaw@latest`. Then open http://localhost:8080.
+
+### Is Autoclaw free?
+
+Yes. Autoclaw is MIT-licensed and free to self-host with your own API keys. A managed Pro tier for teams is on the waitlist.

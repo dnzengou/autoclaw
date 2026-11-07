@@ -7,8 +7,7 @@
 [![Android](https://github.com/dnzengou/autoclaw/actions/workflows/android.yml/badge.svg)](https://github.com/dnzengou/autoclaw/actions/workflows/android.yml)
 [![Release](https://img.shields.io/github/v/release/dnzengou/autoclaw?display_name=tag&sort=semver)](https://github.com/dnzengou/autoclaw/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![pip](https://img.shields.io/pypi/v/autoclaw?label=pip)](https://pypi.org/project/autoclaw/)
-[![npm](https://img.shields.io/npm/v/@autoclaw/sdk?label=npm)](https://www.npmjs.com/package/@autoclaw/sdk)
+[![MCP](https://img.shields.io/badge/MCP-autoclaw%20mcp-8A2BE2)](#for-ai-agents)
 [![GHCR](https://img.shields.io/badge/ghcr-autoclaw-blue?logo=docker)](https://github.com/dnzengou/autoclaw/pkgs/container/autoclaw)
 
 ```
@@ -27,22 +26,30 @@
 ## Install in 30 seconds
 
 ```bash
-pip install autoclaw                                       # Python SDK + CLI
-curl -fsSL https://autoclaw.dev/install.sh | sh            # native binary
-docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest   # container
+docker run -p 8080:8080 ghcr.io/dnzengou/autoclaw:latest   # container (server + dashboard)
+go install github.com/dnzengou/autoclaw@latest             # binary, then: autoclaw server
+pip install "git+https://github.com/dnzengou/autoclaw#subdirectory=sdk/python"   # Python SDK
 ```
 
-Other channels: `npm i @autoclaw/sdk` · `brew install dnzengou/tap/autoclaw` · `scoop install autoclaw` · `go get github.com/dnzengou/autoclaw/sdk/go` · Android APK · `.deb` · Fly.io · Railway · Render. Full matrix: [DISTRIBUTION.md](DISTRIBUTION.md).
+> The PyPI package named `autoclaw` is an unrelated project — install the Python SDK from GitHub as above.
+> npm, Homebrew, Scoop, `.deb`, APK and the `install.sh` script ship with the first tagged release; see [DISTRIBUTION.md](DISTRIBUTION.md).
+
+## For AI agents
+
+```bash
+claude mcp add autoclaw -- autoclaw mcp          # Claude Code; any MCP client works
+```
+
+`autoclaw mcp` exposes 11 tools (status, results, context read/write, start/stop, evo genomes, lineage, skill packs) and talks to the server at `AUTOCLAW_URL` (default `http://localhost:8080`). The HTTP API is described by [`site/openapi.json`](site/openapi.json) and served at `/openapi.json`; [`site/llms.txt`](site/llms.txt) summarises the project for LLMs.
 
 ## Quickstart
 
 ```bash
-mkdir my-experiment && cd my-experiment
-autoclaw init
-export ANTHROPIC_API_KEY=sk-ant-...                        # or OPENAI / DEEPSEEK
-$EDITOR context.md
-autoclaw run --budget 300                                  # ~12 experiments
-open http://localhost:8080
+git clone https://github.com/dnzengou/autoclaw && cd autoclaw   # context.md, rubric.json, train.py templates
+export ANTHROPIC_API_KEY=sk-ant-...                        # or OPENAI_API_KEY / DEEPSEEK_API_KEY
+$EDITOR context.md                                         # your goals; train.py runs each experiment
+autoclaw server --budget 300                               # ~12 experiments
+open http://localhost:8080                                 # press S to start, 4 for the Evolution tab
 ```
 
 ## Read this next

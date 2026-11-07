@@ -1,3 +1,5 @@
+# Fly.io config for the Go server. Deployed by .github/workflows/fly-deploy.yml
+# once FLY_API_TOKEN is set. First time: fly launch --copy-config --no-deploy
 app = "autoclaw-app"
 primary_region = "iad"
 
@@ -6,20 +8,26 @@ primary_region = "iad"
 
 [env]
   PORT = "8080"
-  RUST_LOG = "info"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 0
   processes = ["app"]
 
-[[vm]]
-  size = "performance-2x"
-  memory = "4gb"
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/status"
+    timeout = "5s"
 
-[mounts]
-  source = "autoclaw_data"
-  destination = "/app/.autoclaw"
+# The server is a small static binary; scale up only if train.py needs it.
+# State (results, .autoclaw/evo) lives in the machine's filesystem and resets
+# on redeploy. For persistence, add a [mounts] volume and run as root or
+# chown it at start, since Fly volumes mount root-owned.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

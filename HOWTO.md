@@ -304,9 +304,22 @@ GET  /api/evo/trajectories  → last N outcomes (?limit=50)
 GET  /api/evo/lineage?id=   → [ genome, parent, ..., gen-0 seed ]
 GET  /api/evo/skills        → SkillPack of proven genomes (?min_wins=1)
 POST /api/evo/skills        → import a SkillPack → { imported, merged, skipped, ids }
+GET  /openapi.json          → OpenAPI 3.1 spec for everything above
 ```
 
 Every Go-agent experiment records the `genome_id` of the strategy that steered it.
+
+### MCP (for AI agents)
+
+`autoclaw mcp` runs a Model Context Protocol server on stdio and forwards tool calls to the
+server at `AUTOCLAW_URL` (default `http://localhost:8080`). Tools: `autoclaw_status`,
+`autoclaw_results`, `autoclaw_get_context`, `autoclaw_set_context`, `autoclaw_start`,
+`autoclaw_stop`, `evo_status`, `evo_genomes`, `evo_lineage`, `evo_export_skills`,
+`evo_import_skills`.
+
+```json
+{ "mcpServers": { "autoclaw": { "command": "autoclaw", "args": ["mcp"] } } }
+```
 Set `ANTHROPIC_MODEL` to override the Claude model (default `claude-opus-5-5`).
 
 All SDKs (Python, JS, Go) wrap this surface identically.

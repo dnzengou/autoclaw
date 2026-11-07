@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -117,6 +118,21 @@ func main() {
 		RubricPath: "rubric.json",
 		WorkDir:    ".",
 	}
+	// Hosting platforms (Fly, Render, Railway, Cloud Run) pass the port in $PORT.
+	if p := atoi(os.Getenv("PORT")); p > 0 {
+		cfg.Port = p
+	}
+
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "mcp" {
+		runMCP(args[1:])
+		return
+	}
+	// "server" is accepted as an explicit verb for headless deploys.
+	if len(args) > 0 && args[0] == "server" {
+		args = args[1:]
+	}
+	os.Args = append(os.Args[:1], args...)
 
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
@@ -226,6 +242,13 @@ func main() {
 			log.Println("Shutting down.")
 			os.Exit(0)
 		}
+	}
+
+	// Stdin closed (containers, systemd, nohup): keep serving the dashboard
+	// and API until SIGINT/SIGTERM instead of exiting.
+	if !cfg.NoDashboard {
+		log.Println("stdin closed — running headless; control via the HTTP API")
+		select {}
 	}
 }
 
@@ -797,6 +820,7 @@ func startHTTPServer() {
 	mux.HandleFunc("/api/evo/trajectories", handleEvoTrajectories)
 	mux.HandleFunc("/api/evo/lineage", handleEvoLineage)
 	mux.HandleFunc("/api/evo/skills", handleEvoSkills)
+	mux.HandleFunc("/openapi.json", handleOpenAPI)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -891,7 +915,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		TotalExperiments: n,
 		BestScore:        bs,
 		BudgetRemaining:  budgetRemaining,
-		Uptime:           time.Since(loopStartTime).Seconds(),
+		Uptime:           uptimeSeconds(),
 	}
 	json.NewEncoder(w).Encode(s)
 }
@@ -950,6 +974,15 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 
 // ─── EvoMetaClaw / EvoSkillOps API ──────────────────────────────────────────
 
+//go:embed site/openapi.json
+var openAPISpec []byte
+
+func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Write(openAPISpec)
+}
+
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -1004,6 +1037,14 @@ func handleEvoSkills(w http.ResponseWriter, r *http.Request) {
 func logSafe(s string) string {
 	s = strings.ReplaceAll(s, "\n", " ")
 	return strings.ReplaceAll(s, "\r", " ")
+}
+
+// uptimeSeconds is how long the current loop has run; 0 before the first start.
+func uptimeSeconds() float64 {
+	if loopStartTime.IsZero() {
+		return 0
+	}
+	return time.Since(loopStartTime).Seconds()
 }
 
 func atoi(s string) int {

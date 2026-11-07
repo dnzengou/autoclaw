@@ -454,6 +454,29 @@ experiment with `genome_id`, and feeds the outcome back via `Record()`.
 
 ## Changelog
 
+### 0.8.0 — 2026-11-07
+- **Server runs headless.** It returned from `main` when stdin closed, so every
+  container deploy (Docker, Fly, Render, Railway) exited at startup. It now serves
+  until SIGTERM; honors `$PORT`; accepts `autoclaw server`.
+- **`autoclaw mcp`** — stdlib MCP server (stdio) with 11 tools over the HTTP API.
+- **OpenAPI 3.1** at `site/openapi.json`, embedded and served at `/openapi.json`;
+  a test fails if a route is undocumented.
+- **EvoMetaClaw**: UCB exploration bonus; graded reward (0.1–0.4 by score/best
+  for non-improving runs); best genome only among played genomes; circuit
+  breaker no longer stacks untried mutants.
+- **Dashboard**: Evolution tab (key 4) with genome table and skill-pack export;
+  fixed overflow on phone screens.
+- **Site/SEO**: llms.txt, llms-full.txt, AI-crawler robots.txt, JSON-LD graph
+  (SoftwareApplication, SoftwareSourceCode, WebAPI, FAQPage), og.png, FAQ,
+  "Built for AI agents" section, relative links. Install section lists only
+  verified commands — PyPI `autoclaw` is an unrelated project and npm
+  `@autoclaw/sdk` is unpublished.
+- **Deploy**: `pages.yml` (GitHub Pages), `fly-deploy.yml` (gated on
+  FLY_API_TOKEN), right-sized `fly.toml`.
+- **Branch hygiene**: `branch-cleanup.yml` deletes merged/closed branches.
+- Dependencies: thiserror 2.0, parking_lot 0.13, git2 0.21, pytest ≥ 9.2,
+  actions/cache 6, docker/metadata-action 6.
+
 ### 0.7.0 — 2026-10-28
 - EvoMetaClaw wired into the Go loop; EvoSkillOps (crossover, prune, skill
   packs, lineage) + `/api/evo/*` endpoints; 9 Go tests.
@@ -550,4 +573,4 @@ experiment with `genome_id`, and feeds the outcome back via `Record()`.
 
 ---
 
-*Autoclaw v0.7.0 · MIT · Karpathy pattern · Caveman context format*
+*Autoclaw v0.8.0 · MIT · Karpathy pattern · Caveman context format*

@@ -107,6 +107,7 @@ const (
 	evoStagnationLimit = 8   // experiments without improvement before diversity injection
 	evoFitnessDecay    = 0.8 // EMA weight on prior fitness
 	evoSelectionTemp   = 0.25
+	evoExploreBonus    = 0.08 // UCB coefficient in Select
 )
 
 // Seed genomes: one per exploration niche. These are generation 0; everything
@@ -205,6 +206,10 @@ func (e *EvoEngine) Select() SkillGenome {
 	}
 	weights := make([]float64, len(e.genomes))
 	total := 0.0
+	totalPlays := 0
+	for _, g := range e.genomes {
+		totalPlays += g.Plays
+	}
 	for i, g := range e.genomes {
 		// Q-gate: penalize genomes whose reward stddev is > 0.15 by scaling
 		// their effective fitness down. Unproven genomes (<3 plays) keep raw
@@ -214,6 +219,9 @@ func (e *EvoEngine) Select() SkillGenome {
 			stddev := math.Sqrt(g.Variance)
 			effective = g.Fitness * math.Exp(-2*math.Max(0, stddev-0.15))
 		}
+		// UCB-style exploration bonus: rarely played genomes get a lift that
+		// shrinks as they accumulate plays, so no strategy starves.
+		effective += evoExploreBonus * math.Sqrt(math.Log(float64(totalPlays)+1)/float64(g.Plays+1))
 		weights[i] = math.Exp(effective / evoSelectionTemp)
 		total += weights[i]
 	}
@@ -265,8 +273,13 @@ func (e *EvoEngine) Record(genomeID, experimentID, hypothesis string, score, bes
 		e.stagnation++
 	}
 
-	// Reward in [0,1]: improvements score high, harmless failures low-mid.
-	reward := 0.3
+	// Reward in [0,1]: improvements score high; non-improving runs earn
+	// 0.1–0.4 by how close they came to the best, so a near-miss outranks
+	// a crash (score 0) and dead strategies decay toward the prune floor.
+	reward := 0.1
+	if e.lastBest > 0 && score > 0 {
+		reward = 0.1 + 0.3*math.Min(1, score/e.lastBest)
+	}
 	if improved {
 		reward = math.Min(1.0, 0.7+delta*10)
 	}
@@ -367,6 +380,12 @@ var diversityMutations = []string{
 }
 
 func (e *EvoEngine) injectDiversity() {
+	// An untried mutant is already waiting its turn; don't stack another.
+	for _, g := range e.genomes {
+		if g.Niche == "diversity" && g.Plays == 0 {
+			return
+		}
+	}
 	best := e.best()
 	parentID := ""
 	gen := 1
@@ -418,12 +437,21 @@ func (e *EvoEngine) find(id string) *SkillGenome {
 	return nil
 }
 
+// best returns the fittest genome that has actually played; an untried
+// genome's fitness is only its prior. Falls back to the fittest overall.
 func (e *EvoEngine) best() *SkillGenome {
-	var best *SkillGenome
+	var best, anyBest *SkillGenome
 	for i := range e.genomes {
-		if best == nil || e.genomes[i].Fitness > best.Fitness {
-			best = &e.genomes[i]
+		g := &e.genomes[i]
+		if anyBest == nil || g.Fitness > anyBest.Fitness {
+			anyBest = g
 		}
+		if g.Plays > 0 && (best == nil || g.Fitness > best.Fitness) {
+			best = g
+		}
+	}
+	if best == nil {
+		return anyBest
 	}
 	return best
 }

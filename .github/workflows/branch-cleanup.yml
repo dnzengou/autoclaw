@@ -1,0 +1,74 @@
+name: Branch cleanup
+
+# Deletes branches whose work is finished, so only main (and in-flight work)
+# remains. A branch is deleted when it has no open PR AND either
+#   - its head is already contained in the default branch, or
+#   - it was the head of a PR that has been merged or closed.
+# Branches with an open PR, and unmerged branches that never had a PR, are kept.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be deleted without deleting"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Delete finished branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+
+          open_heads=$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
+            --jq '.[] | select(.head.repo.full_name == env.REPO) | .head.ref')
+
+          deleted=0
+          for ref in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin); do
+            [ "$ref" = "$DEFAULT" ] || [ "$ref" = "HEAD" ] && continue
+            if grep -qxF "$ref" <<<"$open_heads"; then
+              echo "keep    $ref (open PR)"; continue
+            fi
+            reason=""
+            if git merge-base --is-ancestor "origin/$ref" "origin/$DEFAULT"; then
+              reason="merged into $DEFAULT"
+            else
+              closed=$(gh api "repos/$REPO/pulls?state=closed&head=${REPO%%/*}:$ref&per_page=1" --jq 'length')
+              [ "$closed" != "0" ] && reason="PR closed"
+            fi
+            if [ -z "$reason" ]; then
+              echo "keep    $ref (unmerged, no PR)"; continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete $ref ($reason)"
+            else
+              git push origin --delete "$ref" && echo "deleted $ref ($reason)" && deleted=$((deleted+1))
+            fi
+          done
+          echo "Deleted $deleted branch(es)." >> "$GITHUB_STEP_SUMMARY"

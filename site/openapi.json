@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Autoclaw API",
+    "version": "0.8.0",
+    "summary": "Control and observe a self-improving AI experiment loop.",
+    "description": "Autoclaw runs an experiment loop: a human steers goals in context.md, an LLM proposes hypotheses, each experiment runs under a time budget and is scored against rubric.json, and git keeps the wins. EvoMetaClaw evolves which strategy steers each round; EvoSkillOps exports and imports proven strategies. The server listens on $PORT (default 8080). For AI agents, `autoclaw mcp` exposes the same operations as MCP tools.",
+    "license": { "name": "MIT", "identifier": "MIT" },
+    "contact": { "name": "Autoclaw", "url": "https://github.com/dnzengou/autoclaw" }
+  },
+  "externalDocs": { "url": "https://github.com/dnzengou/autoclaw/blob/main/HOWTO.md" },
+  "servers": [{ "url": "http://localhost:8080", "description": "Local autoclaw server" }],
+  "tags": [
+    { "name": "loop", "description": "Experiment loop control and results" },
+    { "name": "evo", "description": "EvoMetaClaw strategy population and EvoSkillOps skill packs" }
+  ],
+  "paths": {
+    "/api/status": {
+      "get": {
+        "tags": ["loop"], "operationId": "getStatus", "summary": "Loop status",
+        "responses": { "200": { "description": "Current status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Status" } } } } }
+      }
+    },
+    "/api/results": {
+      "get": {
+        "tags": ["loop"], "operationId": "listResults", "summary": "All experiments, oldest first",
+        "responses": { "200": { "description": "Experiments", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Experiment" } } } } } }
+      }
+    },
+    "/api/context": {
+      "get": {
+        "tags": ["loop"], "operationId": "getContext", "summary": "Read context.md",
+        "responses": { "200": { "description": "Raw context.md", "content": { "text/plain": { "schema": { "type": "string" } } } } }
+      },
+      "post": {
+        "tags": ["loop"], "operationId": "setContext", "summary": "Replace context.md",
+        "requestBody": { "required": true, "content": { "text/plain": { "schema": { "type": "string" } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StatusMessage" } } } } }
+      }
+    },
+    "/api/start": {
+      "post": {
+        "tags": ["loop"], "operationId": "startLoop", "summary": "Start the loop with a fresh budget",
+        "responses": { "200": { "description": "started or already_running", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StatusMessage" } } } } }
+      }
+    },
+    "/api/stop": {
+      "post": {
+        "tags": ["loop"], "operationId": "stopLoop", "summary": "Stop the loop",
+        "responses": { "200": { "description": "stopped", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StatusMessage" } } } } }
+      }
+    },
+    "/api/reset": {
+      "post": {
+        "tags": ["loop"], "operationId": "resetLoop", "summary": "Clear all experiments and the best score",
+        "responses": { "200": { "description": "reset", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StatusMessage" } } } } }
+      }
+    },
+    "/events": {
+      "get": {
+        "tags": ["loop"], "operationId": "streamEvents", "summary": "Server-sent events: one Experiment per `data:` line, past experiments first",
+        "responses": { "200": { "description": "SSE stream", "content": { "text/event-stream": { "schema": { "type": "string" } } } } }
+      }
+    },
+    "/api/evo/status": {
+      "get": {
+        "tags": ["evo"], "operationId": "getEvoStatus", "summary": "Strategy population summary",
+        "responses": { "200": { "description": "Population status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EvoStatus" } } } } }
+      }
+    },
+    "/api/evo/genomes": {
+      "get": {
+        "tags": ["evo"], "operationId": "listGenomes", "summary": "All strategy genomes",
+        "responses": { "200": { "description": "Genomes", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SkillGenome" } } } } } }
+      }
+    },
+    "/api/evo/trajectories": {
+      "get": {
+        "tags": ["evo"], "operationId": "listTrajectories", "summary": "Most recent experiment outcomes per genome",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 50 } }],
+        "responses": { "200": { "description": "Trajectories, oldest first", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Trajectory" } } } } } }
+      }
+    },
+    "/api/evo/lineage": {
+      "get": {
+        "tags": ["evo"], "operationId": "getLineage", "summary": "A genome and its ancestors, newest first",
+        "parameters": [{ "name": "id", "in": "query", "required": true, "schema": { "type": "string" }, "example": "evo-0007" }],
+        "responses": { "200": { "description": "Lineage", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SkillGenome" } } } } } }
+      }
+    },
+    "/api/evo/skills": {
+      "get": {
+        "tags": ["evo"], "operationId": "exportSkills", "summary": "Export proven genomes as a skill pack",
+        "parameters": [{ "name": "min_wins", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 1 } }],
+        "responses": { "200": { "description": "Skill pack", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SkillPack" } } } } }
+      },
+      "post": {
+        "tags": ["evo"], "operationId": "importSkills", "summary": "Import a skill pack (max 1 MiB)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SkillPack" } } } },
+        "responses": {
+          "200": { "description": "Import summary", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportResult" } } } },
+          "400": { "description": "Invalid skill pack" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StatusMessage": { "type": "object", "properties": { "status": { "type": "string" } }, "required": ["status"] },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "running": { "type": "boolean" },
+          "total_experiments": { "type": "integer" },
+          "best_score": { "type": "number" },
+          "budget_remaining": { "type": "number", "description": "Seconds" },
+          "uptime": { "type": "number", "description": "Seconds since the loop last started; 0 before the first start" }
+        }
+      },
+      "Experiment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "exp-007" },
+          "hypothesis": { "type": "string" },
+          "params": { "type": "object", "additionalProperties": true },
+          "metrics": { "type": "object", "additionalProperties": true },
+          "score": { "type": "number" },
+          "status": { "type": "string", "enum": ["completed", "reverted"], "description": "reverted when the score falls below best + rubric.fail_threshold" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "git_hash": { "type": "string" },
+          "duration_seconds": { "type": "number" },
+          "budget_remaining": { "type": "number" },
+          "genome_id": { "type": "string", "description": "Strategy genome that produced the hypothesis" }
+        }
+      },
+      "GenomeMemory": {
+        "type": "object",
+        "properties": {
+          "hypothesis": { "type": "string" },
+          "score": { "type": "number" },
+          "delta": { "type": "number" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SkillGenome": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "niche": { "type": "string", "examples": ["hyperparameters", "regularization", "architecture", "data", "exploration", "diversity", "hybrid"] },
+          "strategy": { "type": "string", "description": "Injected into the hypothesis prompt" },
+          "fitness": { "type": "number" },
+          "variance": { "type": "number" },
+          "plays": { "type": "integer" },
+          "wins": { "type": "integer" },
+          "generation": { "type": "integer" },
+          "parent_id": { "type": "string" },
+          "parent_ids": { "type": "array", "items": { "type": "string" } },
+          "imported_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "memories": { "type": "array", "items": { "$ref": "#/components/schemas/GenomeMemory" } }
+        }
+      },
+      "Trajectory": {
+        "type": "object",
+        "properties": {
+          "experiment_id": { "type": "string" },
+          "genome_id": { "type": "string" },
+          "hypothesis": { "type": "string" },
+          "score": { "type": "number" },
+          "delta": { "type": "number" },
+          "improved": { "type": "boolean" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EvoStatus": {
+        "type": "object",
+        "properties": {
+          "population_size": { "type": "integer" },
+          "trajectory_count": { "type": "integer" },
+          "stagnation": { "type": "integer" },
+          "breaker_tripped": { "type": "boolean" },
+          "best_genome": { "$ref": "#/components/schemas/SkillGenome" },
+          "generations": { "type": "integer" },
+          "retired": { "type": "integer" },
+          "niches": { "type": "object", "additionalProperties": { "type": "integer" } }
+        }
+      },
+      "SkillPack": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "integer", "const": 1 },
+          "exported_at": { "type": "string", "format": "date-time" },
+          "skills": { "type": "array", "items": { "$ref": "#/components/schemas/SkillGenome" } }
+        },
+        "required": ["skills"]
+      },
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "imported": { "type": "integer" },
+          "merged": { "type": "integer", "description": "Duplicates whose remembered wins were merged in" },
+          "skipped": { "type": "integer" },
+          "ids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
