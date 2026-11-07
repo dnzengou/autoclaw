@@ -21,7 +21,7 @@ config = "0.15"
 clap = { version = "4.4", features = ["derive"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
 dashmap = "6.2"
-parking_lot = "0.12"
+parking_lot = "0.13"
 async-trait = "0.1"
 axum = { version = "0.8", features = ["ws"] }
 tower = "0.5"
