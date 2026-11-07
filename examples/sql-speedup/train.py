@@ -12,7 +12,6 @@ import json
 import pathlib
 import re
 import sqlite3
-import sys
 import time
 
 HERE = pathlib.Path(__file__).parent
@@ -91,4 +90,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
