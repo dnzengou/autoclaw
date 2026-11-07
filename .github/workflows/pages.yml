@@ -1,0 +1,74 @@
+name: Site (GitHub Pages)
+
+# Publishes site/ (landing page, demo dashboard, llms.txt, openapi.json) and
+# the install scripts. Canonical/OG URLs are written as https://autoclaw.dev in
+# the source and rewritten here to the live address: the repo variable
+# SITE_URL when set (e.g. a custom domain), else the GitHub Pages URL.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: GitHub Actions.
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "dashboard.html", "install.sh", "install.ps1", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check that Pages is enabled
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null); then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "url=${url%/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages is off::Enable it once: Settings → Pages → Source: GitHub Actions, then re-run this workflow."
+          fi
+
+      - name: Build site
+        if: steps.pages.outputs.enabled == 'true'
+        env:
+          SITE_URL: ${{ vars.SITE_URL || steps.pages.outputs.url }}
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp -r site/. _site/
+          cp install.sh install.ps1 _site/
+          rm -f _site/vercel.json
+          touch _site/.nojekyll
+          base="${SITE_URL%/}"
+          grep -rl 'https://autoclaw.dev' _site --include='*.html' --include='*.xml' --include='*.txt' --include='*.json' \
+            | xargs -r sed -i "s#https://autoclaw.dev#${base}#g"
+          echo "Site URL: $base" >> "$GITHUB_STEP_SUMMARY"
+          python3 -c "import json; json.load(open('_site/openapi.json'))"
+
+      - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.enabled == 'true'
+
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.pages.outputs.enabled == 'true'
+        with:
+          path: _site
+
+      - id: deployment
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/deploy-pages@v4

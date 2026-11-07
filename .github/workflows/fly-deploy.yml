@@ -1,0 +1,55 @@
+name: Deploy server (Fly.io)
+
+# Deploys the Go server (Dockerfile + fly.toml) on every push to main.
+# Inactive until the FLY_API_TOKEN secret exists. One-time setup:
+#   fly launch --copy-config --no-deploy     # creates the app and volume
+#   fly tokens create deploy | gh secret set FLY_API_TOKEN
+#   fly secrets set ANTHROPIC_API_KEY=...     # optional LLM key
+
+on:
+  push:
+    branches: [main]
+    paths: ["*.go", "go.mod", "Dockerfile", "fly.toml", "dashboard.html", "site/openapi.json", ".github/workflows/fly-deploy.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for FLY_API_TOKEN
+        id: token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Fly deploy skipped::Add the FLY_API_TOKEN secret to deploy the server (see the comment at the top of fly-deploy.yml)."
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.present == 'true'
+
+      - uses: superfly/flyctl-actions/setup-flyctl@v1
+        if: steps.token.outputs.present == 'true'
+
+      - name: Deploy
+        if: steps.token.outputs.present == 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only
+
+      - name: Smoke test
+        if: steps.token.outputs.present == 'true'
+        run: |
+          app=$(grep -m1 '^app' fly.toml | cut -d'"' -f2)
+          for i in 1 2 3 4 5 6; do
+            curl -fsS "https://$app.fly.dev/api/status" && exit 0
+            sleep 10
+          done
+          echo "::error::https://$app.fly.dev/api/status did not answer"; exit 1
