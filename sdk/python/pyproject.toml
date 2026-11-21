@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cli = ["rich>=15.0.0", "typer>=0.27.1"]
+cli = ["rich>=15.0.0", "typer>=0.27.3"]
 dev = ["pytest>=9.2.0", "ruff>=0.4", "mypy>=1.10"]
 
 [project.scripts]
